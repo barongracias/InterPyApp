@@ -1,4 +1,10 @@
 # ------------------
+# Specified Files/Folders
+# ------------------
+backend/uploads/
+backend/outputs/
+
+# ------------------
 # Python
 # ------------------
 __pycache__/
@@ -50,3 +56,9 @@ Thumbs.db
 # ------------------
 *.swp
 *.swo
+
+# Python packaging
+*.egg
+*.egg-info/
+dist/
+build/

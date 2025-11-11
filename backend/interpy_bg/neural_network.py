@@ -2,7 +2,7 @@
 import numpy as np
 import os
 
-# logger
+# local imports
 from .logger import get_console_logger
 logger = get_console_logger(__name__)
 
@@ -58,6 +58,7 @@ class NeuralNetwork():
         Returns:
             np.ndarray: Sigmoid activation applied element-wise to keep the same shape as z.
         """
+        
         return np.where(z >= 0,
                         1 / (1 + np.exp(-z)),
                         np.exp(z) / (1 + np.exp(z))
@@ -110,6 +111,7 @@ class NeuralNetwork():
         Returns:
             np.ndarray: Element-wise derivative of the sigmoid, same shape as z.
         """
+        
         sigmoid = self.activation(z)
         return sigmoid * (1 - sigmoid)
     
@@ -126,6 +128,7 @@ class NeuralNetwork():
         Returns:
             float: Scalar cost value.
         """
+        
         # y predicted values from forward pass
         y_hat = self.forward(X)
         logger.debug(f"Forward pass completed in cost_function, predictions shape: {y_hat.shape}")
@@ -191,6 +194,7 @@ class NeuralNetwork():
         Returns:
             np.ndarray: Flattened vector containing all weights and biases.
         """
+        
         params = np.concatenate([w.ravel() for w in self.weights] + [b.ravel() for b in self.biases])
         logger.debug(f"Parameters flattened into vector of length {params.size}")
         
@@ -204,6 +208,7 @@ class NeuralNetwork():
         Args:
             params (np.ndarray): 1D vector containing weights and biases to set.
         """
+        
         start = 0
         for i in range(len(self.weights)):
             # calc no. elements for weight matrix
@@ -226,6 +231,7 @@ class NeuralNetwork():
         Args:
             filename (str): Name of the file (default: 'model_weights.npz').
         """
+        
         path = os.path.join("backend", "outputs", filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         np.savez(path, *self.weights, *self.biases)
@@ -238,6 +244,7 @@ class NeuralNetwork():
         Args:
             filename (str): Name of the file to load.
         """
+        
         path = os.path.join("backend", "outputs", filename)
         data = np.load(path)
         total_layers = len(self.weights)

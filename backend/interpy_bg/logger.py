@@ -1,15 +1,15 @@
+# imports
 import logging
 
-def get_console_logger(name: str, level: int = logging.DEBUG) -> logging.Logger:
+def get_console_logger(name: str) -> logging.Logger:
     """Creates a console logger with the given name and log level."""
-    logger = logging.getLogger(name)
     
+    logger = logging.getLogger(name.split('.')[-1])
     if not logger.handlers:
-        logger.setLevel(level)
-
+        logger.setLevel(logging.DEBUG)
         # create console handler with same level
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(level)
+        console_handler.setLevel(logging.DEBUG)
 
         # formatter for console output
         formatter = logging.Formatter(
@@ -21,7 +21,7 @@ def get_console_logger(name: str, level: int = logging.DEBUG) -> logging.Logger:
         # attach handler to logger
         logger.addHandler(console_handler)
 
-        # optional: prevent logs from propagating to root logger
+        # prevent logs from propagating to root logger
         logger.propagate = False
 
     return logger

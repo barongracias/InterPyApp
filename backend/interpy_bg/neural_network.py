@@ -232,8 +232,11 @@ class NeuralNetwork():
             filename (str): Name of the file (default: 'model_weights.npz').
         """
         
+        # verify path
         path = os.path.join("backend", "outputs", filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        # save weights
         np.savez(path, *self.weights, *self.biases)
         logger.info(f"Saved weights and biases to {path}")
     
@@ -245,6 +248,7 @@ class NeuralNetwork():
             filename (str): Name of the file to load.
         """
         
+        # verify path
         path = os.path.join("backend", "outputs", filename)
         data = np.load(path)
         total_layers = len(self.weights)

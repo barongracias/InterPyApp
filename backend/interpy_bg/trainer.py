@@ -21,7 +21,10 @@ class Trainer(NeuralNetwork):
         train_val_split (float): Fraction of data used for training.
         train_loss_history (list[float]): RMSE per epoch for training set.
         val_loss_history (list[float]): RMSE per epoch for validation set.
+        mean (np.ndarray | None): Mean of the input training data
+        std (np.ndarray | None): Standard deviation of the input training data
     """
+    
     def __init__(self,
                  hidden_sizes: list[int],
                  Lambda: float,
@@ -44,9 +47,50 @@ class Trainer(NeuralNetwork):
         self.epochs: int = epochs
         self.learning_rate: float = learning_rate
         self.train_val_split: float = train_val_split
+        
         self.train_loss_history: list[float] = []
         self.val_loss_history: list[float] = []
+        
+        self.mean: np.ndarray | None = None
+        self.std: np.ndarray | None = None
+        
         logger.info(f"Trainer initialised: epochs={epochs}, lr={learning_rate}, train_val_split={train_val_split}")
+    
+    def norm_vals(self, X_train: np.ndarray) -> None:
+        """
+        Calculate and store mean and standard deviation into instance for normalisation.
+        
+        Args:
+            X_train (np.ndarray): Input training data.
+        """
+        
+        self.mean = X_train.mean(axis=0)
+        self.std = X_train.std(axis=0) + 1e-8   # avoid zero div for zero std
+        
+    def normalise(self, X: np.ndarray) -> np.ndarray:
+        """
+        Normalise input using mean and standard deviation.
+        
+        Args:
+            X (np.ndarray): Input data, shape (N, 5).
+        
+        Returns:
+            np.ndarray: X_train normalised.
+        """
+        if self.mean is None or self.std is None:
+            raise ValueError("Normalisation values not set")
+        return (X - self.mean)/self.std
+    
+    def save_norm_vals(self, filepath: str) -> None:
+        """
+        Save normalisation values to outputs.
+
+        Args:
+            filepath (str): Path to save the values.
+        """
+        
+        np.savez(filepath, mean=self.mean, std=self.std)
+        logger.info(f"Normalisation values saved to {filepath}")
     
     @staticmethod   # doesn't require instance of Trainer, so no self
     def calc_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -85,37 +129,50 @@ class Trainer(NeuralNetwork):
         # split into train/val
         N = X.shape[0]
         split_index = int(N * self.train_val_split)
+        if split_index == 0 or split_index == N:
+            raise ValueError("Empty train or val set, adjust train_val_split")
+        
         X_train, X_val = X[:split_index], X[split_index:]
         y_train, y_val = y[:split_index], y[split_index:]
-        logger.debug(f"Training set size: {X_train.shape[0]}, Validation set size: {X_val.shape[0]}")
+        logger.info(f"Training samples: {len(X_train)}, Validation samples: {len(X_val)}")
         
+        # normalise data
+        self.norm_vals(X_train)
+        X_train_norm = self.normalise(X_train)
+        X_val_norm = self.normalise(X_val)
+        
+        # initialise history arrays
         train_loss_hist = []
         val_loss_hist = []
+        
+        # logging checkpoints -> print every 20 times
+        epoch_interim = max(1, self.epochs//20)
         
         # iterate over epochs
         for epoch in range(self.epochs):
             logger.debug(f"Epoch {epoch+1}/{self.epochs} starting")
             
-            # apply forward pass
-            y_pred_train = self.forward(X_train)
-            y_pred_val = self.forward(X_val)
-            
-            # apply backprop
-            dW, db = self.backprop(X_train, y_train)
+            # apply backprop (forward pass is computed in backprop method)
+            dW, db = self.backprop(X_train_norm, y_train)
             
             # update weights and biases
             for i in range(len(self.weights)):
                 self.weights[i] -= self.learning_rate * dW[i]
                 self.biases[i] -= self.learning_rate * db[i]
+                
+            # apply forward pass after updates
+            y_pred_train = self.forward(X_train_norm)
+            y_pred_val = self.forward(X_val_norm)
             
             # calc and append rmse
             train_rmse = self.calc_rmse(y_train, y_pred_train)
             val_rmse = self.calc_rmse(y_val, y_pred_val)
+            
             train_loss_hist.append(train_rmse)
             val_loss_hist.append(val_rmse)
             
             # log
-            if (epoch+1)%50 == 0 or epoch == 0:
+            if (epoch + 1) % epoch_interim == 0 or epoch == 0:
                 logger.info(f"Epoch {epoch+1}/{self.epochs}: Train RMSE: {train_rmse:.4f}, Val RMSE: {val_rmse:.4f}")
         
         # save loss histories
@@ -126,15 +183,20 @@ class Trainer(NeuralNetwork):
         output_dir = os.path.join("backend", "outputs")
         os.makedirs(output_dir, exist_ok=True)
         
+        # save norm vals
+        norm_path = os.path.join(output_dir, "normalisation_values.npz")
+        self.save_norm_vals(norm_path)
+        
+        # save weights
+        self.save_weights("model_weights.npz")
+        
         # save RMSE vs Epoch plot
-        loss_filename = os.path.join("backend", "outputs", "rmse_vs_epochs.png")
+        loss_filename = os.path.join(output_dir, "rmse_vs_epochs.png")
         plot_loss(train_loss_hist, val_loss_hist, filename=loss_filename)
-        logger.info(f"RMSE vs Epoch plot saved to {loss_filename}")
         
         # save y_true vs y_preds plot for final epoch
-        preds_filename = os.path.join("backend", "outputs", "ytrue_vs_ypred.png")
+        preds_filename = os.path.join(output_dir, "ytrue_vs_ypred.png")
         plot_predictions(y_train, y_pred_train, filename=preds_filename)
-        logger.info(f"Predicted vs True value plot saved to {preds_filename}")
         
         logger.debug("Training complete")
         return train_loss_hist, val_loss_hist

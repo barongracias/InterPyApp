@@ -31,20 +31,20 @@ class NeuralNetwork():
         """
         
         # fixed input/output size for 5D interpolation
-        self.input_size = 5
-        self.hidden_sizes = hidden_sizes    # e.g., [16, 32, 16]
-        self.output_size = 1
-        self.Lambda = Lambda
+        self.input_size: int = 5
+        self.hidden_sizes: list[int] = hidden_sizes    # e.g., [16, 32, 16]
+        self.output_size: int = 1
+        self.Lambda: float = Lambda
         logger.info(f"NeuralNetwork initialized: 5 inputs, hidden layers {hidden_sizes}, 1 output")
         
         # initialise layer sizes
-        self.layer_sizes = [self.input_size] + self.hidden_sizes + [self.output_size]    # e.g., [5, 16, 32, 16, 1]
+        self.layer_sizes: list[int] = [self.input_size] + self.hidden_sizes + [self.output_size]    # e.g., [5, 16, 32, 16, 1]
         
         # initialise weights with small random numbers (Gaussian)
-        self.weights = [np.random.randn(self.layer_sizes[i], self.layer_sizes[i+1]) * 0.01 for i in range(len(self.layer_sizes)-1)]
+        self.weights: list[np.ndarray] = [np.random.randn(self.layer_sizes[i], self.layer_sizes[i+1]) * 0.01 for i in range(len(self.layer_sizes)-1)]
         logger.debug(f"Initialised weights: {[w.shape for w in self.weights]}")
         
-        self.biases = [np.zeros((1, self.layer_sizes[i+1])) for i in range(len(self.layer_sizes)-1)]
+        self.biases: list[np.ndarray] = [np.zeros((1, self.layer_sizes[i+1])) for i in range(len(self.layer_sizes)-1)]
         logger.debug(f"Initialised biases: {[b.shape for b in self.biases]}")
 
     # sigmoid activation function

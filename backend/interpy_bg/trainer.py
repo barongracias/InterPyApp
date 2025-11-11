@@ -7,6 +7,7 @@ from .neural_network import NeuralNetwork
 from .plotter import plot_loss, plot_predictions
 from .logger import get_console_logger
 logger = get_console_logger(__name__)
+logger.setLevel("INFO")
 
 class Trainer(NeuralNetwork):
     """
@@ -38,6 +39,7 @@ class Trainer(NeuralNetwork):
             learning_rate (float): Learning rate for gradient descent.
             train_val_split (float): Fraction of dataset used for training.
         """
+        
         super().__init__(hidden_sizes, Lambda)
         self.epochs: int = epochs
         self.learning_rate: float = learning_rate
@@ -74,6 +76,7 @@ class Trainer(NeuralNetwork):
                 - train_loss_history: RMSE for training set per epoch
                 - val_loss_history: RMSE for validation set per epoch
         """
+        
         # shuffle data
         shuffler = np.random.permutation(X.shape[0])
         X, y = X[shuffler], y[shuffler]
@@ -112,7 +115,7 @@ class Trainer(NeuralNetwork):
             val_loss_hist.append(val_rmse)
             
             # log
-            if (epoch+1)%10 == 0 or epoch == 0:
+            if (epoch+1)%50 == 0 or epoch == 0:
                 logger.info(f"Epoch {epoch+1}/{self.epochs}: Train RMSE: {train_rmse:.4f}, Val RMSE: {val_rmse:.4f}")
         
         # save loss histories

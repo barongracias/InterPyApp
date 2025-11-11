@@ -5,6 +5,7 @@ import os
 # local imports
 from .logger import get_console_logger
 logger = get_console_logger(__name__)
+logger.setLevel("INFO")
 
 class NeuralNetwork():
     """

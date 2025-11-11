@@ -1,8 +1,9 @@
 # imports
 import numpy as np
+import os
 
 # logger
-from logger import get_console_logger
+from .logger import get_console_logger
 logger = get_console_logger(__name__)
 
 class NeuralNetwork():
@@ -196,7 +197,7 @@ class NeuralNetwork():
         return params
 
     
-    def set_params(self, params: np.ndarray):
+    def set_params(self, params: np.ndarray) -> None:
         """
         Set all weights and biases from a flattened parameter vector.
 
@@ -218,23 +219,26 @@ class NeuralNetwork():
         
         logger.debug(f"Parameters set from vector of length {params.size}")
 
-    def save_weights(self, path: str):
+    def save_weights(self, filename="model_weights.npz") -> None:
         """
-        Save the weights and biases to a .npz file.
+        Save the weights and biases to backend/outputs.
 
         Args:
-            path (str): File path where the weights and biases will be saved.
+            filename (str): Name of the file (default: 'model_weights.npz').
         """
+        path = os.path.join("backend", "outputs", filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         np.savez(path, *self.weights, *self.biases)
         logger.info(f"Saved weights and biases to {path}")
     
-    def load_weights(self, path: str):
+    def load_weights(self, filename="model_weights.npz") -> None:
         """
-        Load the weights and biases from a .npz file.
+        Load the weights and biases from backend/outputs.
 
         Args:
-            path (str): File path from where the weights and biases are loaded.
+            filename (str): Name of the file to load.
         """
+        path = os.path.join("backend", "outputs", filename)
         data = np.load(path)
         total_layers = len(self.weights)
 

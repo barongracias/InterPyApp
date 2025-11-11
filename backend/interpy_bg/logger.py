@@ -13,7 +13,8 @@ def get_console_logger(name: str, level: int = logging.DEBUG) -> logging.Logger:
 
         # formatter for console output
         formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            fmt='%(asctime)s - (%(name)s) - [%(levelname)s]: %(message)s',
+            datefmt='%d/%m/%y %H:%M:%S'
         )
         console_handler.setFormatter(formatter)
 

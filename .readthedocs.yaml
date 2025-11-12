@@ -12,5 +12,3 @@ python:
   install:
     - requirements: backend/docs/requirements.txt
     - path: backend
-
-default_branch: main

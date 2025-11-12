@@ -3,6 +3,7 @@
 # ------------------
 backend/uploads/
 backend/outputs/
+backend/pydoc-markdown.yml
 
 # ------------------
 # Python

@@ -1,0 +1,8 @@
+loader:
+  type: python
+  search_path: .
+  packages:
+    - interpy_bg
+renderer:
+  type: markdown
+  filename: README.md

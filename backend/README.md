@@ -71,7 +71,7 @@ plot_predictions(y, predictions, filename="ytrue_vs_ypred.png")
 
 ## Documentation
 
-Full API documentation is hosted on ReadTheDocs: [ReadTheDocs](https://<your-project>.readthedocs.io).
+Full API documentation is hosted on [ReadTheDocs](https://<your-project>.readthedocs.io).
 See details for every class, method and plotting utility.
 
 ## License

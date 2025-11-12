@@ -1,0 +1,762 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>interpy_bg Package &mdash; interpy_bg  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            interpy_bg
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">interpy_bg Package</a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a><ul>
+<li><a class="reference internal" href="#modules">Modules</a><ul>
+<li><a class="reference internal" href="#module-interpy_bg.neural_network">neural_network</a><ul>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork</span></code></a><ul>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.input_size"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.input_size</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.hidden_sizes"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.hidden_sizes</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.output_size"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.output_size</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.Lambda"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.Lambda</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.layer_sizes"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.layer_sizes</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.weights"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.weights</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.biases"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.biases</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.activation"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.activation()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.activation_deriv"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.activation_deriv()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.backprop"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.backprop()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.cost_function"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.cost_function()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.forward"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.forward()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.load_weights"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.load_weights()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork.save_weights"><code class="docutils literal notranslate"><span class="pre">NeuralNetwork.save_weights()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-interpy_bg.trainer">trainer</a><ul>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer"><code class="docutils literal notranslate"><span class="pre">Trainer</span></code></a><ul>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.epochs"><code class="docutils literal notranslate"><span class="pre">Trainer.epochs</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.learning_rate"><code class="docutils literal notranslate"><span class="pre">Trainer.learning_rate</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.train_val_split"><code class="docutils literal notranslate"><span class="pre">Trainer.train_val_split</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.train_loss_history"><code class="docutils literal notranslate"><span class="pre">Trainer.train_loss_history</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.val_loss_history"><code class="docutils literal notranslate"><span class="pre">Trainer.val_loss_history</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.mean"><code class="docutils literal notranslate"><span class="pre">Trainer.mean</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.std"><code class="docutils literal notranslate"><span class="pre">Trainer.std</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.calc_rmse"><code class="docutils literal notranslate"><span class="pre">Trainer.calc_rmse()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.norm_vals"><code class="docutils literal notranslate"><span class="pre">Trainer.norm_vals()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.normalise"><code class="docutils literal notranslate"><span class="pre">Trainer.normalise()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.save_norm_vals"><code class="docutils literal notranslate"><span class="pre">Trainer.save_norm_vals()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.trainer.Trainer.train"><code class="docutils literal notranslate"><span class="pre">Trainer.train()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-interpy_bg.tester">tester</a><ul>
+<li><a class="reference internal" href="#interpy_bg.tester.Tester"><code class="docutils literal notranslate"><span class="pre">Tester</span></code></a><ul>
+<li><a class="reference internal" href="#interpy_bg.tester.Tester.mean"><code class="docutils literal notranslate"><span class="pre">Tester.mean</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.tester.Tester.std"><code class="docutils literal notranslate"><span class="pre">Tester.std</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.tester.Tester.load_norm_vals"><code class="docutils literal notranslate"><span class="pre">Tester.load_norm_vals()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.tester.Tester.load_test_data"><code class="docutils literal notranslate"><span class="pre">Tester.load_test_data()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.tester.Tester.normalise"><code class="docutils literal notranslate"><span class="pre">Tester.normalise()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.tester.Tester.predict"><code class="docutils literal notranslate"><span class="pre">Tester.predict()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-interpy_bg.plotter">plotter</a><ul>
+<li><a class="reference internal" href="#interpy_bg.plotter.plot_loss"><code class="docutils literal notranslate"><span class="pre">plot_loss()</span></code></a></li>
+<li><a class="reference internal" href="#interpy_bg.plotter.plot_predictions"><code class="docutils literal notranslate"><span class="pre">plot_predictions()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-interpy_bg.logger">logger</a><ul>
+<li><a class="reference internal" href="#interpy_bg.logger.get_console_logger"><code class="docutils literal notranslate"><span class="pre">get_console_logger()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">interpy_bg</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">interpy_bg Package</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/barongracias/InterPyApp/blob/main/backend/interpy_bg/docs/interpy_bg.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="interpy-bg-package">
+<h1>interpy_bg Package<a class="headerlink" href="#interpy-bg-package" title="Link to this heading"></a></h1>
+<p>The <cite>interpy_bg</cite> package provides a feedforward neural network library for
+5D → 1D interpolation. It includes functionality for training, testing,
+plotting, and logging.</p>
+</section>
+<section id="submodules">
+<h1>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<section id="modules">
+<h2>Modules<a class="headerlink" href="#modules" title="Link to this heading"></a></h2>
+<section id="module-interpy_bg.neural_network">
+<span id="neural-network"></span><h3>neural_network<a class="headerlink" href="#module-interpy_bg.neural_network" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">interpy_bg.neural_network.</span></span><span class="sig-name descname"><span class="pre">NeuralNetwork</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hidden_sizes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Lambda</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/neural_network.html#NeuralNetwork"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Feedforward neural network for 5D to 1 interpolation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.input_size">
+<span class="sig-name descname"><span class="pre">input_size</span></span><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.input_size" title="Link to this definition"></a></dt>
+<dd><p>Number of input features (fixed at 5).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.hidden_sizes">
+<span class="sig-name descname"><span class="pre">hidden_sizes</span></span><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.hidden_sizes" title="Link to this definition"></a></dt>
+<dd><p>Number of neurons in each hidden layer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.output_size">
+<span class="sig-name descname"><span class="pre">output_size</span></span><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.output_size" title="Link to this definition"></a></dt>
+<dd><p>Number of output neurons (fixed at 1).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.Lambda">
+<span class="sig-name descname"><span class="pre">Lambda</span></span><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.Lambda" title="Link to this definition"></a></dt>
+<dd><p>L2 regularization parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.layer_sizes">
+<span class="sig-name descname"><span class="pre">layer_sizes</span></span><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.layer_sizes" title="Link to this definition"></a></dt>
+<dd><p>Complete list of layer sizes including input, hidden, output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.weights">
+<span class="sig-name descname"><span class="pre">weights</span></span><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.weights" title="Link to this definition"></a></dt>
+<dd><p>Weight matrices for each layer connection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.biases">
+<span class="sig-name descname"><span class="pre">biases</span></span><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.biases" title="Link to this definition"></a></dt>
+<dd><p>Bias vectors for each layer (excluding input layer).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.activation">
+<span class="sig-name descname"><span class="pre">activation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/neural_network.html#NeuralNetwork.activation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.activation" title="Link to this definition"></a></dt>
+<dd><p>Apply the sigmoid activation function element-wise to the input.
+Numerically stable version to avoid overflow for large negative values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>z</strong> (<em>np.ndarray</em>) – Input array of any shape.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sigmoid activation applied element-wise to keep the same shape as z.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.activation_deriv">
+<span class="sig-name descname"><span class="pre">activation_deriv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/neural_network.html#NeuralNetwork.activation_deriv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.activation_deriv" title="Link to this definition"></a></dt>
+<dd><p>Derivative of the sigmoid activation function applied element-wise.
+The derivative is set as sigmoid(z) * (1 - sigmoid(z)).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>z</strong> (<em>np.ndarray</em>) – Input array of any shape (pre-activation values).</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Element-wise derivative of the sigmoid, same shape as z.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.backprop">
+<span class="sig-name descname"><span class="pre">backprop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_hat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/neural_network.html#NeuralNetwork.backprop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.backprop" title="Link to this definition"></a></dt>
+<dd><p>Calculate the gradients of the cost function w.r.t. to weights and biases using backpropagation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code>]]</span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>X</strong> (<em>np.ndarray</em>) – Input data of shape (N, 5), where N is the number of data points.</p></li>
+<li><p><strong>y</strong> (<em>np.ndarray</em>) – True target values of shape (N, 1).</p></li>
+<li><p><strong>y_hat</strong> (<em>np.ndarray</em>) – Predicted target values of shape (N, 1).</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Two lists:</dt><dd><ul class="simple">
+<li><p>dW: list of np.ndarray, gradients of weights for each layer</p></li>
+<li><p>db: list of np.ndarray, gradients of biases for each layer</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.cost_function">
+<span class="sig-name descname"><span class="pre">cost_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/neural_network.html#NeuralNetwork.cost_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.cost_function" title="Link to this definition"></a></dt>
+<dd><p>Compute the cost (loss) of the neural network for given inputs and targets.</p>
+<p>The cost equals mean squared error (MSE) plus L2 regularisation on the weights.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>X</strong> (<em>np.ndarray</em>) – Input data of shape (N, 5), where N is the number of data points.</p></li>
+<li><p><strong>y</strong> (<em>np.ndarray</em>) – True target values of shape (N, 1).</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Scalar cost value.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/neural_network.html#NeuralNetwork.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.forward" title="Link to this definition"></a></dt>
+<dd><p>Perform a forward pass through the network.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>X</strong> (<em>np.ndarray</em>) – Input data of shape (N, 5) where N is the number of data points.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Network output of shape (N, 1).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.load_weights">
+<span class="sig-name descname"><span class="pre">load_weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'model_weights.npz'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/neural_network.html#NeuralNetwork.load_weights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.load_weights" title="Link to this definition"></a></dt>
+<dd><p>Load the weights and biases from backend/outputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em>) – Name of the file to load.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.neural_network.NeuralNetwork.save_weights">
+<span class="sig-name descname"><span class="pre">save_weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'model_weights.npz'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/neural_network.html#NeuralNetwork.save_weights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.neural_network.NeuralNetwork.save_weights" title="Link to this definition"></a></dt>
+<dd><p>Save the weights and biases to backend/outputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em>) – Name of the file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-interpy_bg.trainer">
+<span id="trainer"></span><h3>trainer<a class="headerlink" href="#module-interpy_bg.trainer" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">interpy_bg.trainer.</span></span><span class="sig-name descname"><span class="pre">Trainer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hidden_sizes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Lambda</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_val_split</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/trainer.html#Trainer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.trainer.Trainer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork" title="interpy_bg.neural_network.NeuralNetwork"><code class="xref py py-class docutils literal notranslate"><span class="pre">NeuralNetwork</span></code></a></p>
+<p>Trainer class for feedforward neural network.</p>
+<p>Inherits from NeuralNetwork and adds functionality for training, calculating RMSE and saving trained models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.epochs">
+<span class="sig-name descname"><span class="pre">epochs</span></span><a class="headerlink" href="#interpy_bg.trainer.Trainer.epochs" title="Link to this definition"></a></dt>
+<dd><p>Number of training iterations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.learning_rate">
+<span class="sig-name descname"><span class="pre">learning_rate</span></span><a class="headerlink" href="#interpy_bg.trainer.Trainer.learning_rate" title="Link to this definition"></a></dt>
+<dd><p>Step size for gradient descent updates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.train_val_split">
+<span class="sig-name descname"><span class="pre">train_val_split</span></span><a class="headerlink" href="#interpy_bg.trainer.Trainer.train_val_split" title="Link to this definition"></a></dt>
+<dd><p>Fraction of data used for training.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.train_loss_history">
+<span class="sig-name descname"><span class="pre">train_loss_history</span></span><a class="headerlink" href="#interpy_bg.trainer.Trainer.train_loss_history" title="Link to this definition"></a></dt>
+<dd><p>RMSE per epoch for training set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.val_loss_history">
+<span class="sig-name descname"><span class="pre">val_loss_history</span></span><a class="headerlink" href="#interpy_bg.trainer.Trainer.val_loss_history" title="Link to this definition"></a></dt>
+<dd><p>RMSE per epoch for validation set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.mean">
+<span class="sig-name descname"><span class="pre">mean</span></span><a class="headerlink" href="#interpy_bg.trainer.Trainer.mean" title="Link to this definition"></a></dt>
+<dd><p>Mean of the input training data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.std">
+<span class="sig-name descname"><span class="pre">std</span></span><a class="headerlink" href="#interpy_bg.trainer.Trainer.std" title="Link to this definition"></a></dt>
+<dd><p>Standard deviation of the input training data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.calc_rmse">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">calc_rmse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/trainer.html#Trainer.calc_rmse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.trainer.Trainer.calc_rmse" title="Link to this definition"></a></dt>
+<dd><p>Calculate root mean squared error between predictions and true values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>y_true</strong> (<em>np.ndarray</em>) – True target values, shape (N, 1).</p></li>
+<li><p><strong>y_pred</strong> (<em>np.ndarray</em>) – Predicted values, shape (N, 1).</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>RMSE value.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.norm_vals">
+<span class="sig-name descname"><span class="pre">norm_vals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_train</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/trainer.html#Trainer.norm_vals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.trainer.Trainer.norm_vals" title="Link to this definition"></a></dt>
+<dd><p>Calculate and store mean and standard deviation into instance for normalisation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>X_train</strong> (<em>np.ndarray</em>) – Input training data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.normalise">
+<span class="sig-name descname"><span class="pre">normalise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/trainer.html#Trainer.normalise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.trainer.Trainer.normalise" title="Link to this definition"></a></dt>
+<dd><p>Normalise input using mean and standard deviation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>X</strong> (<em>np.ndarray</em>) – Input data, shape (N, 5).</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Normalised input data, shape (N, 5).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.save_norm_vals">
+<span class="sig-name descname"><span class="pre">save_norm_vals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'normalisation_values.npz'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/trainer.html#Trainer.save_norm_vals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.trainer.Trainer.save_norm_vals" title="Link to this definition"></a></dt>
+<dd><p>Save normalisation values to outputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em>) – Name of the file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.trainer.Trainer.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/trainer.html#Trainer.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.trainer.Trainer.train" title="Link to this definition"></a></dt>
+<dd><p>Train the neural network using gradient descent and track RMSE. Saves RMSE vs epochs plot.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>], <code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]]</span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>X</strong> (<em>np.ndarray</em>) – Input data, shape (N, 5).</p></li>
+<li><p><strong>y</strong> (<em>np.ndarray</em>) – Target data, shape (N, 1).</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Two lists of floats:</dt><dd><ul class="simple">
+<li><p>train_loss_history: RMSE for training set per epoch</p></li>
+<li><p>val_loss_history: RMSE for validation set per epoch</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-interpy_bg.tester">
+<span id="tester"></span><h3>tester<a class="headerlink" href="#module-interpy_bg.tester" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="interpy_bg.tester.Tester">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">interpy_bg.tester.</span></span><span class="sig-name descname"><span class="pre">Tester</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hidden_sizes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Lambda</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/tester.html#Tester"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.tester.Tester" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#interpy_bg.neural_network.NeuralNetwork" title="interpy_bg.neural_network.NeuralNetwork"><code class="xref py py-class docutils literal notranslate"><span class="pre">NeuralNetwork</span></code></a></p>
+<p>Tester class for trained feedforward neural network. Loads model weights and normalisation values, applies normalisation,
+and calculates predicted outputs for given test inputs.</p>
+<p>Inherits from NeuralNetwork.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.tester.Tester.mean">
+<span class="sig-name descname"><span class="pre">mean</span></span><a class="headerlink" href="#interpy_bg.tester.Tester.mean" title="Link to this definition"></a></dt>
+<dd><p>Mean of the input training data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="interpy_bg.tester.Tester.std">
+<span class="sig-name descname"><span class="pre">std</span></span><a class="headerlink" href="#interpy_bg.tester.Tester.std" title="Link to this definition"></a></dt>
+<dd><p>Standard deviation of the input training data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.tester.Tester.load_norm_vals">
+<span class="sig-name descname"><span class="pre">load_norm_vals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'normalisation_values.npz'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/tester.html#Tester.load_norm_vals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.tester.Tester.load_norm_vals" title="Link to this definition"></a></dt>
+<dd><p>Load stored normalisation values (mean and standard deviation)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>filename</strong> (<em>str</em>) – Name of the file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.tester.Tester.load_test_data">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_test_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/tester.html#Tester.load_test_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.tester.Tester.load_test_data" title="Link to this definition"></a></dt>
+<dd><p>Load test data from numpy array or pickle (.pkl) file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>X_data</strong> (<em>np.ndarray</em><em> | </em><em>str</em>) – Input data (N, 5) or path to .pkl file.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Input data of shape (N, 5).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.tester.Tester.normalise">
+<span class="sig-name descname"><span class="pre">normalise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/tester.html#Tester.normalise"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.tester.Tester.normalise" title="Link to this definition"></a></dt>
+<dd><p>Normalise input using mean and standard deviation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>X</strong> (<em>np.ndarray</em>) – Input data, shape (N, 5).</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Normalised input data, shape (N, 5).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="interpy_bg.tester.Tester.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/tester.html#Tester.predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.tester.Tester.predict" title="Link to this definition"></a></dt>
+<dd><p>Perform interpolation using the trained model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>X_data</strong> (<em>np.ndarray</em><em> | </em><em>str</em>) – Input data (N, 5) or path to .pkl file.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Predicted outputs of shape (N, 1).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-interpy_bg.plotter">
+<span id="plotter"></span><h3>plotter<a class="headerlink" href="#module-interpy_bg.plotter" title="Link to this heading"></a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="interpy_bg.plotter.plot_loss">
+<span class="sig-prename descclassname"><span class="pre">interpy_bg.plotter.</span></span><span class="sig-name descname"><span class="pre">plot_loss</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_loss</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_loss</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'rmse_vs_epochs.png'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/plotter.html#plot_loss"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.plotter.plot_loss" title="Link to this definition"></a></dt>
+<dd><p>Plot training and validation RMSE vs epochs and save the figure in high-quality format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>train_loss</strong> (<em>list</em><em>[</em><em>float</em><em>]</em>) – Training RMSE per epoch.</p></li>
+<li><p><strong>val_loss</strong> (<em>list</em><em>[</em><em>float</em><em>]</em>) – Validation RMSE per epoch.</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – Name of the file.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="interpy_bg.plotter.plot_predictions">
+<span class="sig-prename descclassname"><span class="pre">interpy_bg.plotter.</span></span><span class="sig-name descname"><span class="pre">plot_predictions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ytrue_vs_ypred.png'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/plotter.html#plot_predictions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.plotter.plot_predictions" title="Link to this definition"></a></dt>
+<dd><p>Plot predicted vs true values for the model and save as a figure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>y_true</strong> (<em>list</em><em>[</em><em>float</em><em>]</em>) – True target values.</p></li>
+<li><p><strong>y_pred</strong> (<em>list</em><em>[</em><em>float</em><em>]</em>) – Predicted values from the neural network.</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – Name of the file.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-interpy_bg.logger">
+<span id="logger"></span><h3>logger<a class="headerlink" href="#module-interpy_bg.logger" title="Link to this heading"></a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="interpy_bg.logger.get_console_logger">
+<span class="sig-prename descclassname"><span class="pre">interpy_bg.logger.</span></span><span class="sig-name descname"><span class="pre">get_console_logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/interpy_bg/logger.html#get_console_logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#interpy_bg.logger.get_console_logger" title="Link to this definition"></a></dt>
+<dd><p>Creates a console logger with the given name and log level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Logger</span></code></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Baron Gracias.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

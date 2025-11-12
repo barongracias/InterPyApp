@@ -16,6 +16,14 @@ extensions = [
     "sphinx.ext.autosummary"       # Generate summary tables for classes/functions
 ]
 
+# Automatically document members of classes and modules
+autodoc_default_options = {
+    "members": True,           # Show all members
+    "undoc-members": True,     # Show members even if they have no docstring
+    "inherited-members": True, # Include inherited methods
+    "show-inheritance": True   # Show class inheritance
+}
+
 # Enable autosummary generation
 autosummary_generate = True
 

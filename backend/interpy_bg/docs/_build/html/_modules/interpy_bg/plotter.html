@@ -39,8 +39,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <!-- Local TOC -->
-              <div class="local-toc"></div>
+              <p class="caption" role="heading"><span class="caption-text">Package Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../interpy_bg.html">interpy_bg Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Module Reference</a></li>
+</ul>
+
         </div>
       </div>
     </nav>
@@ -76,7 +80,7 @@
 <span class="n">logger</span> <span class="o">=</span> <span class="n">get_console_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <div class="viewcode-block" id="plot_loss">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.plotter.plot_loss">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.plotter.html#interpy_bg.plotter.plot_loss">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_loss</span><span class="p">(</span><span class="n">train_loss</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">val_loss</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;rmse_vs_epochs.png&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Plot training and validation RMSE vs epochs and save the figure in high-quality format.</span>
@@ -115,7 +119,7 @@
 
 
 <div class="viewcode-block" id="plot_predictions">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.plotter.plot_predictions">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.plotter.html#interpy_bg.plotter.plot_predictions">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">plot_predictions</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">y_pred</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ytrue_vs_ypred.png&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Plot predicted vs true values for the model and save as a figure.</span>

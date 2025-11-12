@@ -1,5 +1,5 @@
 ==========================
-interpy_bg Documentation
+interpy_bg
 ==========================
 
 Feedforward neural network library for 5D → 1D interpolation.
@@ -28,25 +28,35 @@ Or install directly from the repository:
 Usage
 -----
 
-```python
-from interpy_bg.trainer import Trainer
-from interpy_bg.tester import Tester
-import numpy as np
+.. code-block:: python
+    
+    from interpy_bg.trainer import Trainer
+    from interpy_bg.tester import Tester
+    import numpy as np
 
-# Example: training
-X_train = np.random.rand(100, 5)
-y_train = np.random.rand(100, 1)
+    # Example: training
+    X_train = np.random.rand(100, 5)
+    y_train = np.random.rand(100, 1)
 
-trainer = Trainer(hidden_sizes=[10, 5], Lambda=0.01, epochs=500, learning_rate=0.01, train_val_split=0.8)
-train_loss, val_loss = trainer.train(X_train, y_train)
+    trainer = Trainer(hidden_sizes=[10, 5], Lambda=0.01, epochs=500, learning_rate=0.01, train_val_split=0.8)
+    train_loss, val_loss = trainer.train(X_train, y_train)
 
-# Example: testing
-tester = Tester(hidden_sizes=[10, 5], Lambda=0.01)
-y_pred = tester.predict(X_train)
-```
+    # Example: testing
+    tester = Tester(hidden_sizes=[10, 5], Lambda=0.01)
+    y_pred = tester.predict(X_train)
 
-Module Reference
+Contents
 ===============
+
 .. toctree::
    :maxdepth: 2
-   :caption: Modules
+   :caption: Package Contents:
+
+   interpy_bg
+   modules
+
+Indices and Tables
+===============
+
+* :ref:`genindex`
+* :ref:`modindex`

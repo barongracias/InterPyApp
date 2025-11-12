@@ -39,8 +39,12 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <!-- Local TOC -->
-              <div class="local-toc"></div>
+              <p class="caption" role="heading"><span class="caption-text">Package Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../interpy_bg.html">interpy_bg Package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Module Reference</a></li>
+</ul>
+
         </div>
       </div>
     </nav>
@@ -76,7 +80,7 @@
 <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="NeuralNetwork">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.neural_network.NeuralNetwork">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.neural_network.html#interpy_bg.neural_network.NeuralNetwork">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">NeuralNetwork</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Feedforward neural network for 5D to 1 interpolation.</span>
@@ -119,7 +123,7 @@
 
     <span class="c1"># sigmoid activation function</span>
 <div class="viewcode-block" id="NeuralNetwork.activation">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.neural_network.NeuralNetwork.activation">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.neural_network.html#interpy_bg.neural_network.NeuralNetwork.activation">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">activation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Apply the sigmoid activation function element-wise to the input.</span>
@@ -140,7 +144,7 @@
     
     <span class="c1"># forward pass method</span>
 <div class="viewcode-block" id="NeuralNetwork.forward">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.neural_network.NeuralNetwork.forward">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.neural_network.html#interpy_bg.neural_network.NeuralNetwork.forward">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Perform a forward pass through the network.</span>
@@ -178,7 +182,7 @@
     
     <span class="c1"># sigmoid derivative for backpropagation</span>
 <div class="viewcode-block" id="NeuralNetwork.activation_deriv">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.neural_network.NeuralNetwork.activation_deriv">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.neural_network.html#interpy_bg.neural_network.NeuralNetwork.activation_deriv">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">activation_deriv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Derivative of the sigmoid activation function applied element-wise.</span>
@@ -196,7 +200,7 @@
 
     
 <div class="viewcode-block" id="NeuralNetwork.cost_function">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.neural_network.NeuralNetwork.cost_function">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.neural_network.html#interpy_bg.neural_network.NeuralNetwork.cost_function">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">cost_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Compute the cost (loss) of the neural network for given inputs and targets.</span>
@@ -229,7 +233,7 @@
 
     
 <div class="viewcode-block" id="NeuralNetwork.backprop">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.neural_network.NeuralNetwork.backprop">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.neural_network.html#interpy_bg.neural_network.NeuralNetwork.backprop">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">backprop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the gradients of the cost function w.r.t. to weights and biases using backpropagation.</span>
@@ -272,7 +276,7 @@
 
 
 <div class="viewcode-block" id="NeuralNetwork.save_weights">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.neural_network.NeuralNetwork.save_weights">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.neural_network.html#interpy_bg.neural_network.NeuralNetwork.save_weights">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;model_weights.npz&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Save the weights and biases to backend/outputs.</span>
@@ -291,7 +295,7 @@
 
     
 <div class="viewcode-block" id="NeuralNetwork.load_weights">
-<a class="viewcode-back" href="../../interpy_bg.html#interpy_bg.neural_network.NeuralNetwork.load_weights">[docs]</a>
+<a class="viewcode-back" href="../../_autosummary/interpy_bg.neural_network.html#interpy_bg.neural_network.NeuralNetwork.load_weights">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">load_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;model_weights.npz&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Load the weights and biases from backend/outputs.</span>

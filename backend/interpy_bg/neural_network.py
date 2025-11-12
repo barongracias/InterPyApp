@@ -146,23 +146,20 @@ class NeuralNetwork():
         
         return J
     
-    def backprop(self, X: np.ndarray, y: np.ndarray) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    def backprop(self, X: np.ndarray, y: np.ndarray, y_hat: np.ndarray) -> tuple[list[np.ndarray], list[np.ndarray]]:
         """
         Calculate the gradients of the cost function w.r.t. to weights and biases using backpropagation.
 
         Args:
             X (np.ndarray): Input data of shape (N, 5), where N is the number of data points.
             y (np.ndarray): True target values of shape (N, 1).
+            y_hat (np.ndarray): Predicted target values of shape (N, 1).
 
         Returns:
             tuple: Two lists:
                 - dW: list of np.ndarray, gradients of weights for each layer
                 - db: list of np.ndarray, gradients of biases for each layer
         """
-        
-        # forward pass to update z_hat_list and z_list
-        y_hat = self.forward(X)
-        N = X.shape[0]
         
         # initialise gradient lists
         dW = [np.zeros_like(W) for W in self.weights]
@@ -173,6 +170,7 @@ class NeuralNetwork():
         logger.debug(f"Output layer delta shape: {delta.shape}")
         
         # backprop through layers in reverse
+        N = X.shape[0]
         for i in reversed(range(len(self.weights))):
             # grad for weights with reg
             dW[i] = self.z_hat_list[i].T @ (delta/N) + self.Lambda * self.weights[i]
@@ -187,50 +185,13 @@ class NeuralNetwork():
                 logger.debug(f"Backpropagated delta for layer {i-1} shape: {delta.shape}")
 
         return dW, db
-    
-    def get_params(self) -> np.ndarray:
-        """
-        Get all weights and biases unrolled into a single 1D vector.
 
-        Returns:
-            np.ndarray: Flattened vector containing all weights and biases.
-        """
-        
-        params = np.concatenate([w.ravel() for w in self.weights] + [b.ravel() for b in self.biases])
-        logger.debug(f"Parameters flattened into vector of length {params.size}")
-        
-        return params
-
-    
-    def set_params(self, params: np.ndarray) -> None:
-        """
-        Set all weights and biases from a flattened parameter vector.
-
-        Args:
-            params (np.ndarray): 1D vector containing weights and biases to set.
-        """
-        
-        start = 0
-        for i in range(len(self.weights)):
-            # calc no. elements for weight matrix
-            w_size = self.weights[i].size
-            self.weights[i] = np.reshape(params[start:start + w_size], self.weights[i].shape)
-            start += w_size
-            
-        for i in range(len(self.biases)):
-            # calc no. elements for bias matrix
-            b_size = self.biases[i].size
-            self.biases[i] = np.reshape(params[start:start + b_size], self.biases[i].shape)
-            start += b_size
-        
-        logger.debug(f"Parameters set from vector of length {params.size}")
-
-    def save_weights(self, filename="model_weights.npz") -> None:
+    def save_weights(self, filename: str = "model_weights.npz") -> None:
         """
         Save the weights and biases to backend/outputs.
 
         Args:
-            filename (str): Name of the file (default: 'model_weights.npz').
+            filename (str): Name of the file.
         """
         
         # verify path
@@ -241,7 +202,7 @@ class NeuralNetwork():
         np.savez(path, *self.weights, *self.biases)
         logger.info(f"Saved weights and biases to {path}")
     
-    def load_weights(self, filename="model_weights.npz") -> None:
+    def load_weights(self, filename: str = "model_weights.npz") -> None:
         """
         Load the weights and biases from backend/outputs.
 

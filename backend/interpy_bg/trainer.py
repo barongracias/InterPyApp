@@ -75,22 +75,26 @@ class Trainer(NeuralNetwork):
             X (np.ndarray): Input data, shape (N, 5).
         
         Returns:
-            np.ndarray: X_train normalised.
+            np.ndarray: Normalised input data, shape (N, 5).
         """
         if self.mean is None or self.std is None:
             raise ValueError("Normalisation values not set")
-        return (X - self.mean)/self.std
+        return (X - self.mean) / self.std
     
-    def save_norm_vals(self, filepath: str) -> None:
+    def save_norm_vals(self, filename: str = "normalisation_values.npz") -> None:
         """
         Save normalisation values to outputs.
 
         Args:
-            filepath (str): Path to save the values.
+            filename (str): Name of the file.
         """
         
-        np.savez(filepath, mean=self.mean, std=self.std)
-        logger.info(f"Normalisation values saved to {filepath}")
+        # verify path
+        path = os.path.join("backend", "outputs", filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        np.savez(path, mean=self.mean, std=self.std)
+        logger.info(f"Normalisation values saved to {path}")
     
     @staticmethod   # doesn't require instance of Trainer, so no self
     def calc_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -152,8 +156,11 @@ class Trainer(NeuralNetwork):
         for epoch in range(self.epochs):
             logger.debug(f"Epoch {epoch+1}/{self.epochs} starting")
             
+            # apply forward pass
+            y_pred_train = self.forward(X_train_norm)
+            
             # apply backprop (forward pass is computed in backprop method)
-            dW, db = self.backprop(X_train_norm, y_train)
+            dW, db = self.backprop(X_train_norm, y_train, y_pred_train)
             
             # update weights and biases
             for i in range(len(self.weights)):
@@ -179,24 +186,17 @@ class Trainer(NeuralNetwork):
         self.train_loss_history = train_loss_hist
         self.val_loss_history = val_loss_hist
         
-        # make output folder
-        output_dir = os.path.join("backend", "outputs")
-        os.makedirs(output_dir, exist_ok=True)
-        
         # save norm vals
-        norm_path = os.path.join(output_dir, "normalisation_values.npz")
-        self.save_norm_vals(norm_path)
+        self.save_norm_vals("normalisation_values.npz")
         
         # save weights
         self.save_weights("model_weights.npz")
         
         # save RMSE vs Epoch plot
-        loss_filename = os.path.join(output_dir, "rmse_vs_epochs.png")
-        plot_loss(train_loss_hist, val_loss_hist, filename=loss_filename)
+        plot_loss(train_loss_hist, val_loss_hist, filename="rmse_vs_epochs.png")
         
         # save y_true vs y_preds plot for final epoch
-        preds_filename = os.path.join(output_dir, "ytrue_vs_ypred.png")
-        plot_predictions(y_train, y_pred_train, filename=preds_filename)
+        plot_predictions(y_train, y_pred_train, filename="ytrue_vs_ypred.png")
         
         logger.debug("Training complete")
         return train_loss_hist, val_loss_hist

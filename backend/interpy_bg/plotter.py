@@ -7,14 +7,14 @@ import os
 from .logger import get_console_logger
 logger = get_console_logger(__name__)
 
-def plot_loss(train_loss: list[float], val_loss: list[float], filename: str) -> None:
+def plot_loss(train_loss: list[float], val_loss: list[float], filename: str = "rmse_vs_epochs.png") -> None:
     """
     Plot training and validation RMSE vs epochs and save the figure in high-quality format.
 
     Args:
         train_loss (list[float]): Training RMSE per epoch.
         val_loss (list[float]): Validation RMSE per epoch.
-        filename (str): Path to save the plot.
+        filename (str): Name of the file.
     """
     try:
         epochs = range(1, len(train_loss) + 1)
@@ -30,26 +30,27 @@ def plot_loss(train_loss: list[float], val_loss: list[float], filename: str) -> 
         plt.legend(frameon=False, fontsize=10)
         plt.tight_layout()
         
-        # check folder exists
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        # verify path
+        path = os.path.join("backend", "outputs", filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         
         # save figure at high DPI
-        plt.savefig(filename, dpi=300)
+        plt.savefig(path, dpi=300)
         plt.close()
-        logger.info(f"Loss plot saved to {filename}")
+        logger.info(f"Loss plot saved to {path}")
         
     except Exception as e:
         logger.error(f"Error creating loss plot: {e}")
 
 
-def plot_predictions(y_true: list[float], y_pred: list[float], filename: str) -> None:
+def plot_predictions(y_true: list[float], y_pred: list[float], filename: str = "ytrue_vs_ypred.png") -> None:
     """
     Plot predicted vs true values for the model and save as a figure.
 
     Args:
         y_true (list[float]): True target values.
         y_pred (list[float]): Predicted values from the neural network.
-        filename (str): Path to save the plot.
+        filename (str): Name of the file.
     """
     try:
         plt.figure(figsize=(8, 6))
@@ -67,13 +68,14 @@ def plot_predictions(y_true: list[float], y_pred: list[float], filename: str) ->
         plt.legend(frameon=False, fontsize=10)
         plt.tight_layout()
         
-        # check folder exists
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        # verify path
+        path = os.path.join("backend", "outputs", filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         
         # save figure
-        plt.savefig(filename, dpi=300)
+        plt.savefig(path, dpi=300)
         plt.close()
-        logger.info(f"Prediction plot saved to {filename}")
+        logger.info(f"Prediction plot saved to {path}")
         
     except Exception as e:
         logger.error(f"Error creating prediction plot: {e}")

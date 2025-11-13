@@ -4,6 +4,7 @@ import os
 
 # local imports
 from .logger import get_console_logger
+from .utils import timer, log_call
 
 class NeuralNetwork():
     """
@@ -40,7 +41,6 @@ class NeuralNetwork():
         
         # logger
         self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
-        self.logger.setLevel("INFO")
         self.logger.info(f"NeuralNetwork initialized: 5 inputs, hidden layers {hidden_sizes}, 1 output")
         
         # initialise layer sizes
@@ -53,7 +53,7 @@ class NeuralNetwork():
         self.biases: list[np.ndarray] = [np.zeros((1, self.layer_sizes[i+1])) for i in range(len(self.layer_sizes)-1)]
         self.logger.debug(f"Initialised biases: {[b.shape for b in self.biases]}")
 
-    # sigmoid activation function
+    @log_call
     def activation(self, z: np.ndarray) -> np.ndarray:
         """
         Apply the sigmoid activation function element-wise to the input.
@@ -70,8 +70,25 @@ class NeuralNetwork():
                         1 / (1 + np.exp(-z)),
                         np.exp(z) / (1 + np.exp(z))
                         )
+        
+    @log_call
+    def activation_deriv(self, z: np.ndarray) -> np.ndarray:
+        """
+        Derivative of the sigmoid activation function applied element-wise.
+        The derivative is set as sigmoid(z) * (1 - sigmoid(z)).
+
+        Args:
+            z (np.ndarray): Input array of any shape (pre-activation values).
+
+        Returns:
+            np.ndarray: Element-wise derivative of the sigmoid, same shape as z.
+        """
+        
+        sigmoid = self.activation(z)
+        return sigmoid * (1 - sigmoid)
     
-    # forward pass method
+    @log_call
+    @timer
     def forward(self, X: np.ndarray) -> np.ndarray:
         """
         Perform a forward pass through the network.
@@ -106,22 +123,8 @@ class NeuralNetwork():
         self.logger.debug(f"Forward pass output shape: {self.z_hat_list[-1].shape}")
         return self.z_hat_list[-1]
     
-    # sigmoid derivative for backpropagation
-    def activation_deriv(self, z: np.ndarray) -> np.ndarray:
-        """
-        Derivative of the sigmoid activation function applied element-wise.
-        The derivative is set as sigmoid(z) * (1 - sigmoid(z)).
-
-        Args:
-            z (np.ndarray): Input array of any shape (pre-activation values).
-
-        Returns:
-            np.ndarray: Element-wise derivative of the sigmoid, same shape as z.
-        """
-        
-        sigmoid = self.activation(z)
-        return sigmoid * (1 - sigmoid)
-    
+    @log_call
+    @timer
     def cost_function(self, X: np.ndarray, y: np.ndarray) -> float:
         """
         Compute the cost (loss) of the neural network for given inputs and targets.
@@ -152,6 +155,8 @@ class NeuralNetwork():
         
         return J
     
+    @log_call
+    @timer
     def backprop(self, X: np.ndarray, y: np.ndarray, y_hat: np.ndarray) -> tuple[list[np.ndarray], list[np.ndarray]]:
         """
         Calculate the gradients of the cost function w.r.t. to weights and biases using backpropagation.
@@ -192,6 +197,7 @@ class NeuralNetwork():
 
         return dW, db
 
+    @log_call
     def save_weights(self, filename: str = "model_weights.npz", directory: str = None) -> None:
         """
         Save the weights and biases to backend/outputs.
@@ -205,12 +211,12 @@ class NeuralNetwork():
         if directory is None:
             directory = os.getcwd()
         path = os.path.join(directory, filename)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
         
         # save weights
         np.savez(path, *self.weights, *self.biases)
         self.logger.info(f"Saved weights and biases to {path}")
     
+    @log_call
     def load_weights(self, filename: str = "model_weights.npz", directory: str = None) -> None:
         """
         Load the weights and biases from backend/outputs.
@@ -225,8 +231,8 @@ class NeuralNetwork():
             directory = os.getcwd()
         path = os.path.join(directory, filename)
         data = np.load(path)
-        total_layers = len(self.weights)
 
+        total_layers = len(self.weights)
         # first total_layers arrays are weights, the rest are biases
         for i in range(total_layers):
             self.weights[i] = data[f"arr_{i}"]

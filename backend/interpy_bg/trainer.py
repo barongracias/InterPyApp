@@ -7,6 +7,7 @@ import pickle
 from .neural_network import NeuralNetwork
 from .plotter import plot_loss, plot_predictions
 from .logger import get_console_logger
+from .utils import timer, log_call
 
 class Trainer(NeuralNetwork):
     """
@@ -58,7 +59,6 @@ class Trainer(NeuralNetwork):
         
         # logger
         self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
-        self.logger.setLevel("INFO")
         self.logger.info(f"Trainer initialised: epochs={epochs}, lr={learning_rate}, train_val_split={train_val_split}")
     
     @staticmethod
@@ -86,7 +86,8 @@ class Trainer(NeuralNetwork):
         if not isinstance(data, (tuple, list)) or len(data) != 2:
             raise ValueError("Pickle file must contain a tuple (X, y)")
 
-        X, y = np.array(data[0], dtype=float), np.array(data[1], dtype=float)
+        X = np.array(data[0], dtype=float)
+        y = np.array(data[1], dtype=float)
 
         if X.ndim == 1:
             X = X.reshape(1, -1)
@@ -100,6 +101,7 @@ class Trainer(NeuralNetwork):
 
         return X, y
     
+    @log_call
     def norm_vals(self, X_train: np.ndarray) -> None:
         """
         Calculate and store mean and standard deviation into instance for normalisation.
@@ -110,7 +112,8 @@ class Trainer(NeuralNetwork):
         
         self.mean = X_train.mean(axis=0)
         self.std = X_train.std(axis=0) + 1e-8   # avoid zero div for zero std
-        
+    
+    @log_call
     def normalise(self, X: np.ndarray) -> np.ndarray:
         """
         Normalise input using mean and standard deviation.
@@ -125,6 +128,7 @@ class Trainer(NeuralNetwork):
             raise ValueError("Normalisation values not set")
         return (X - self.mean) / self.std
     
+    @log_call
     def save_norm_vals(self, filename: str = "normalisation_values.npz", directory: str = None) -> None:
         """
         Save normalisation values to outputs.
@@ -143,7 +147,7 @@ class Trainer(NeuralNetwork):
         np.savez(path, mean=self.mean, std=self.std)
         self.logger.info(f"Normalisation values saved to {path}")
     
-    @staticmethod   # doesn't require instance of Trainer, so no self
+    @staticmethod
     def calc_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         """
         Calculate root mean squared error between predictions and true values.
@@ -158,6 +162,8 @@ class Trainer(NeuralNetwork):
         
         return np.sqrt(np.mean((y_true - y_pred)**2))
 
+    @log_call
+    @timer
     def train(self, pkl_path: str) -> tuple[list[float], list[float]]:
         """
         Train the neural network using gradient descent and track RMSE. Saves RMSE vs epochs plot.
@@ -175,8 +181,8 @@ class Trainer(NeuralNetwork):
         self.logger.info(f"Loaded training data: {X.shape[0]} samples")
 
         # shuffle
-        shuffler = np.random.permutation(X.shape[0])
-        X, y = X[shuffler], y[shuffler]
+        idx = np.random.permutation(X.shape[0])
+        X, y = X[idx], y[idx]
         
         # split into train/val
         N = X.shape[0]
@@ -193,12 +199,17 @@ class Trainer(NeuralNetwork):
         X_train_norm = self.normalise(X_train)
         X_val_norm = self.normalise(X_val)
         
+        # cache variables for speed
+        weights = self.weights
+        biases = self.biases
+        lr = self.learning_rate
+        
         # initialise history arrays
         train_loss_hist = []
         val_loss_hist = []
         
         # logging checkpoints -> print every 20 times
-        epoch_interim = max(1, self.epochs//20)
+        log_every = max(1, self.epochs//20)
         
         # iterate over epochs
         for epoch in range(self.epochs):
@@ -207,15 +218,15 @@ class Trainer(NeuralNetwork):
             # apply forward pass
             y_pred_train = self.forward(X_train_norm)
             
-            # apply backprop (forward pass is computed in backprop method)
+            # apply backprop
             dW, db = self.backprop(X_train_norm, y_train, y_pred_train)
             
             # update weights and biases
-            for i in range(len(self.weights)):
-                self.weights[i] -= self.learning_rate * dW[i]
-                self.biases[i] -= self.learning_rate * db[i]
+            for i in range(len(weights)):
+                weights[i] -= lr * dW[i]
+                biases[i] -= lr * db[i]
                 
-            # apply forward pass after updates
+            # calculate new preds for logging
             y_pred_train = self.forward(X_train_norm)
             y_pred_val = self.forward(X_val_norm)
             
@@ -227,7 +238,7 @@ class Trainer(NeuralNetwork):
             val_loss_hist.append(val_rmse)
             
             # log
-            if (epoch + 1) % epoch_interim == 0 or epoch == 0:
+            if (epoch + 1) % log_every == 0 or epoch == 0:
                 self.logger.info(f"Epoch {epoch+1}/{self.epochs}: Train RMSE: {train_rmse:.4f}, Val RMSE: {val_rmse:.4f}")
         
         # save loss histories

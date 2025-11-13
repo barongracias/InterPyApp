@@ -6,6 +6,7 @@ import pickle
 # local imports
 from .neural_network import NeuralNetwork
 from .logger import get_console_logger
+from .utils import timer, log_call
 
 class Tester(NeuralNetwork):
     """
@@ -36,9 +37,9 @@ class Tester(NeuralNetwork):
         
         # logger
         self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
-        self.logger.setLevel("INFO")
         self.logger.info("Tester initialised")
-        
+    
+    @log_call
     def load_norm_vals(self, filename: str = "normalisation_values.npz", directory: str = None) -> None:
         """
         Load stored normalisation values (mean and standard deviation)
@@ -59,7 +60,8 @@ class Tester(NeuralNetwork):
         self.mean = data["mean"]
         self.std = data["std"]
         self.logger.debug(f"Loaded normalisation values from {path}")
-        
+    
+    @log_call
     def normalise(self, X: np.ndarray) -> np.ndarray:
         """
         Normalise input using mean and standard deviation.
@@ -73,9 +75,12 @@ class Tester(NeuralNetwork):
         
         if self.mean is None or self.std is None:
             raise ValueError("Normalisation values not loaded")
+        if X.shape[1] != self.mean.shape[0]:
+            raise ValueError(f"Input has {X.shape[1]} features but expected {self.mean.shape[0]}")
+        
         return (X - self.mean) / self.std
     
-    @staticmethod   # doesn't require instance of Tester, so no self
+    @staticmethod
     def load_test_data(X_data: np.ndarray | str) -> np.ndarray:
         """
         Load test data from numpy array or pickle (.pkl) file.
@@ -97,7 +102,7 @@ class Tester(NeuralNetwork):
                 X_test = pickle.load(f)
         # if array passed
         else:
-            X_test = np.array(X_data, dtype=float)
+            X_test = np.asarray(X_data, dtype=float)
         
         # check 2D shape (N, 5)
         if X_test.ndim == 1:
@@ -107,6 +112,8 @@ class Tester(NeuralNetwork):
         
         return X_test
     
+    @timer
+    @log_call
     def predict(self, X_data: np.ndarray | str) -> np.ndarray:
         """
         Perform interpolation using the trained model.
@@ -119,8 +126,11 @@ class Tester(NeuralNetwork):
         """
         
         # load model weights and norm vals
-        self.load_weights("model_weights.npz", self.directory)
-        self.load_norm_vals("normalisation_values.npz", self.directory)
+        if not hasattr(self, "weights") or self.weights is None:
+            self.load_weights("model_weights.npz", self.directory)
+
+        if self.mean is None or self.std is None:
+            self.load_norm_vals("normalisation_values.npz", self.directory)
         
         # load and normalise input testing data
         X_test = self.load_test_data(X_data)

@@ -26,7 +26,7 @@ def get_console_logger(name: str, directory: str) -> logging.Logger:
         
         # create console handler with same level
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
+        console_handler.setLevel(logging.INFO)
 
         # formatter for console output
         formatter = logging.Formatter(
@@ -40,11 +40,7 @@ def get_console_logger(name: str, directory: str) -> logging.Logger:
         filename = os.path.join(directory, f"{name.split('.')[-1]}.log")
         file_handler = logging.FileHandler(filename)
         file_handler.setLevel(logging.DEBUG)
-        file_formatter = logging.Formatter(
-            fmt='%(asctime)s - (%(name)s) - [%(levelname)s]: %(message)s',
-            datefmt='%d/%m/%y %H:%M:%S'
-        )
-        file_handler.setFormatter(file_formatter)
+        file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
         # prevent logs from propagating to root logger

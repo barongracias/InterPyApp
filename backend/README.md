@@ -38,9 +38,14 @@ from interpy_bg.trainer import Trainer
 X = np.random.rand(50, 5)
 y = np.random.rand(50, 1)
 
-# Define output directory
+# assign output directory
 output_dir = os.path.join("outputs")
 os.makedirs(output_dir, exist_ok=True)
+
+# Save training data to a pickle file
+train_pkl = os.path.join(output_dir, "train_data.pkl")
+with open(train_pkl, "wb") as f:
+    pickle.dump((X, y), f)
 
 # Initialize trainer
 trainer = Trainer(

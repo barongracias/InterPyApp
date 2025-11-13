@@ -1,6 +1,7 @@
 # imports
 import numpy as np
 import os
+import pickle
 
 # local imports
 from .neural_network import NeuralNetwork
@@ -60,6 +61,45 @@ class Trainer(NeuralNetwork):
         self.logger.setLevel("INFO")
         self.logger.info(f"Trainer initialised: epochs={epochs}, lr={learning_rate}, train_val_split={train_val_split}")
     
+    @staticmethod
+    def load_train_data(pkl_path: str) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Load training data from a pickle file.
+
+        The pickle must contain a tuple (X, y).
+
+        Args:
+            pkl_path (str): Path to the pickle file containing training data.
+
+        Returns:
+            tuple: (X, y) as NumPy arrays
+        """
+        
+        if not os.path.exists(pkl_path):
+            raise FileNotFoundError(f"Training pickle file not found: {pkl_path}")
+        if not pkl_path.endswith(".pkl"):
+            raise ValueError("Training data must be provided as a .pkl file")
+
+        with open(pkl_path, "rb") as f:
+            data = pickle.load(f)
+
+        if not isinstance(data, (tuple, list)) or len(data) != 2:
+            raise ValueError("Pickle file must contain a tuple (X, y)")
+
+        X, y = np.array(data[0], dtype=float), np.array(data[1], dtype=float)
+
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        if y.ndim == 1:
+            y = y.reshape(-1, 1)
+
+        if X.shape[0] != y.shape[0]:
+            raise ValueError(f"Number of samples mismatch: X has {X.shape[0]}, y has {y.shape[0]}")
+        if X.shape[1] != 5:
+            raise ValueError(f"Expected input features to have 5 columns, got {X.shape[1]}")
+
+        return X, y
+    
     def norm_vals(self, X_train: np.ndarray) -> None:
         """
         Calculate and store mean and standard deviation into instance for normalisation.
@@ -117,14 +157,13 @@ class Trainer(NeuralNetwork):
         """
         
         return np.sqrt(np.mean((y_true - y_pred)**2))
-    
-    def train(self, X: np.ndarray, y: np.ndarray) -> tuple[list[float], list[float]]:
+
+    def train(self, pkl_path: str) -> tuple[list[float], list[float]]:
         """
         Train the neural network using gradient descent and track RMSE. Saves RMSE vs epochs plot.
 
         Args:
-            X (np.ndarray): Input data, shape (N, 5).
-            y (np.ndarray): Target data, shape (N, 1).
+            pkl_path (str): Path to .pkl file containing training data.
 
         Returns:
             tuple: Two lists of floats:
@@ -132,10 +171,12 @@ class Trainer(NeuralNetwork):
                 - val_loss_history: RMSE for validation set per epoch
         """
         
-        # shuffle data
+        X, y = self.load_train_data(pkl_path)
+        self.logger.info(f"Loaded training data: {X.shape[0]} samples")
+
+        # shuffle
         shuffler = np.random.permutation(X.shape[0])
         X, y = X[shuffler], y[shuffler]
-        self.logger.debug(f"Input data shuffled")
         
         # split into train/val
         N = X.shape[0]

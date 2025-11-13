@@ -6,8 +6,6 @@ import os
 from .neural_network import NeuralNetwork
 from .plotter import plot_loss, plot_predictions
 from .logger import get_console_logger
-logger = get_console_logger(__name__)
-logger.setLevel("INFO")
 
 class Trainer(NeuralNetwork):
     """
@@ -21,6 +19,7 @@ class Trainer(NeuralNetwork):
         train_val_split (float): Fraction of data used for training.
         train_loss_history (list[float]): RMSE per epoch for training set.
         val_loss_history (list[float]): RMSE per epoch for validation set.
+        directory (str): Directory path to save output files.
         mean (np.ndarray | None): Mean of the input training data
         std (np.ndarray | None): Standard deviation of the input training data
     """
@@ -30,7 +29,8 @@ class Trainer(NeuralNetwork):
                  Lambda: float,
                  epochs: int,
                  learning_rate: float,
-                 train_val_split: float
+                 train_val_split: float,
+                 directory: str
                  ):
         """
         Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
@@ -41,20 +41,24 @@ class Trainer(NeuralNetwork):
             epochs (int): Number of training iterations.
             learning_rate (float): Learning rate for gradient descent.
             train_val_split (float): Fraction of dataset used for training.
+            directory (str): Directory path to save output files.
         """
         
-        super().__init__(hidden_sizes, Lambda)
+        super().__init__(hidden_sizes, Lambda, directory)
         self.epochs: int = epochs
         self.learning_rate: float = learning_rate
         self.train_val_split: float = train_val_split
-        
         self.train_loss_history: list[float] = []
         self.val_loss_history: list[float] = []
         
+        # set for later
         self.mean: np.ndarray | None = None
         self.std: np.ndarray | None = None
         
-        logger.info(f"Trainer initialised: epochs={epochs}, lr={learning_rate}, train_val_split={train_val_split}")
+        # logger
+        self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
+        self.logger.setLevel("INFO")
+        self.logger.info(f"Trainer initialised: epochs={epochs}, lr={learning_rate}, train_val_split={train_val_split}")
     
     def norm_vals(self, X_train: np.ndarray) -> None:
         """
@@ -81,20 +85,23 @@ class Trainer(NeuralNetwork):
             raise ValueError("Normalisation values not set")
         return (X - self.mean) / self.std
     
-    def save_norm_vals(self, filename: str = "normalisation_values.npz") -> None:
+    def save_norm_vals(self, filename: str = "normalisation_values.npz", directory: str = None) -> None:
         """
         Save normalisation values to outputs.
 
         Args:
             filename (str): Name of the file.
+            directory (str): Directory path to save file.
         """
         
         # verify path
-        path = os.path.join("backend", "outputs", filename)
+        if directory is None:
+            directory = os.getcwd()
+        path = os.path.join(directory, filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         
         np.savez(path, mean=self.mean, std=self.std)
-        logger.info(f"Normalisation values saved to {path}")
+        self.logger.info(f"Normalisation values saved to {path}")
     
     @staticmethod   # doesn't require instance of Trainer, so no self
     def calc_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -128,7 +135,7 @@ class Trainer(NeuralNetwork):
         # shuffle data
         shuffler = np.random.permutation(X.shape[0])
         X, y = X[shuffler], y[shuffler]
-        logger.debug(f"Input data shuffled")
+        self.logger.debug(f"Input data shuffled")
         
         # split into train/val
         N = X.shape[0]
@@ -138,7 +145,7 @@ class Trainer(NeuralNetwork):
         
         X_train, X_val = X[:split_index], X[split_index:]
         y_train, y_val = y[:split_index], y[split_index:]
-        logger.info(f"Training samples: {len(X_train)}, Validation samples: {len(X_val)}")
+        self.logger.info(f"Training samples: {len(X_train)}, Validation samples: {len(X_val)}")
         
         # normalise data
         self.norm_vals(X_train)
@@ -154,7 +161,7 @@ class Trainer(NeuralNetwork):
         
         # iterate over epochs
         for epoch in range(self.epochs):
-            logger.debug(f"Epoch {epoch+1}/{self.epochs} starting")
+            self.logger.debug(f"Epoch {epoch+1}/{self.epochs} starting")
             
             # apply forward pass
             y_pred_train = self.forward(X_train_norm)
@@ -180,23 +187,23 @@ class Trainer(NeuralNetwork):
             
             # log
             if (epoch + 1) % epoch_interim == 0 or epoch == 0:
-                logger.info(f"Epoch {epoch+1}/{self.epochs}: Train RMSE: {train_rmse:.4f}, Val RMSE: {val_rmse:.4f}")
+                self.logger.info(f"Epoch {epoch+1}/{self.epochs}: Train RMSE: {train_rmse:.4f}, Val RMSE: {val_rmse:.4f}")
         
         # save loss histories
         self.train_loss_history = train_loss_hist
         self.val_loss_history = val_loss_hist
         
         # save norm vals
-        self.save_norm_vals("normalisation_values.npz")
+        self.save_norm_vals("normalisation_values.npz", self.directory)
         
         # save weights
-        self.save_weights("model_weights.npz")
+        self.save_weights("model_weights.npz", self.directory)
         
         # save RMSE vs Epoch plot
-        plot_loss(train_loss_hist, val_loss_hist, filename="rmse_vs_epochs.png")
+        plot_loss(train_loss_hist, val_loss_hist, "rmse_vs_epochs.png", self.directory)
         
         # save y_true vs y_preds plot for final epoch
-        plot_predictions(y_train, y_pred_train, filename="ytrue_vs_ypred.png")
+        plot_predictions(y_train, y_pred_train, "ytrue_vs_ypred.png", self.directory)
         
-        logger.debug("Training complete")
+        self.logger.debug("Training complete")
         return train_loss_hist, val_loss_hist

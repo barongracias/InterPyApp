@@ -4,8 +4,6 @@ import os
 
 # local imports
 from .logger import get_console_logger
-logger = get_console_logger(__name__)
-logger.setLevel("INFO")
 
 class NeuralNetwork():
     """
@@ -16,18 +14,21 @@ class NeuralNetwork():
         hidden_sizes (list[int]): Number of neurons in each hidden layer.
         output_size (int): Number of output neurons (fixed at 1).
         Lambda (float): L2 regularization parameter.
+        directory (str): Directory path to save output files.
+        logger (logging.Logger): Logger instance for class.
         layer_sizes (list[int]): Complete list of layer sizes including input, hidden, output.
         weights (list[np.ndarray]): Weight matrices for each layer connection.
         biases (list[np.ndarray]): Bias vectors for each layer (excluding input layer).
     """
     
-    def __init__(self, hidden_sizes: list[int], Lambda: float):
+    def __init__(self, hidden_sizes: list[int], Lambda: float, directory: str):
         """
         Initialize the neural network with random weights and zero biases.
 
         Args:
             hidden_sizes (list[int]): List specifying number of neurons in each hidden layer.
             Lambda (float): L2 regularisation parameter.
+            directory (str): Directory path to save output files.
         """
         
         # fixed input/output size for 5D interpolation
@@ -35,17 +36,22 @@ class NeuralNetwork():
         self.hidden_sizes: list[int] = hidden_sizes    # e.g., [16, 32, 16]
         self.output_size: int = 1
         self.Lambda: float = Lambda
-        logger.info(f"NeuralNetwork initialized: 5 inputs, hidden layers {hidden_sizes}, 1 output")
+        self.directory: str = directory
+        
+        # logger
+        self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
+        self.logger.setLevel("INFO")
+        self.logger.info(f"NeuralNetwork initialized: 5 inputs, hidden layers {hidden_sizes}, 1 output")
         
         # initialise layer sizes
         self.layer_sizes: list[int] = [self.input_size] + self.hidden_sizes + [self.output_size]    # e.g., [5, 16, 32, 16, 1]
         
         # initialise weights with small random numbers (Gaussian)
         self.weights: list[np.ndarray] = [np.random.randn(self.layer_sizes[i], self.layer_sizes[i+1]) * 0.01 for i in range(len(self.layer_sizes)-1)]
-        logger.debug(f"Initialised weights: {[w.shape for w in self.weights]}")
+        self.logger.debug(f"Initialised weights: {[w.shape for w in self.weights]}")
         
         self.biases: list[np.ndarray] = [np.zeros((1, self.layer_sizes[i+1])) for i in range(len(self.layer_sizes)-1)]
-        logger.debug(f"Initialised biases: {[b.shape for b in self.biases]}")
+        self.logger.debug(f"Initialised biases: {[b.shape for b in self.biases]}")
 
     # sigmoid activation function
     def activation(self, z: np.ndarray) -> np.ndarray:
@@ -77,7 +83,7 @@ class NeuralNetwork():
             np.ndarray: Network output of shape (N, 1).
         """
         
-        logger.debug(f"Forward pass input shape: {X.shape}")
+        self.logger.debug(f"Forward pass input shape: {X.shape}")
         # initialise lists for pre/post-activation function steps, z and z_hat
         self.z_list = []
         self.z_hat_list = [X]   # z_hat[0] is the input layer
@@ -95,9 +101,9 @@ class NeuralNetwork():
                 z_hat = self.activation(z)
             
             self.z_hat_list.append(z_hat)
-            logger.debug(f"Layer {i} | z shape: {z.shape}, z_hat shape: {z_hat.shape}")
+            self.logger.debug(f"Layer {i} | z shape: {z.shape}, z_hat shape: {z_hat.shape}")
         
-        logger.debug(f"Forward pass output shape: {self.z_hat_list[-1].shape}")
+        self.logger.debug(f"Forward pass output shape: {self.z_hat_list[-1].shape}")
         return self.z_hat_list[-1]
     
     # sigmoid derivative for backpropagation
@@ -132,7 +138,7 @@ class NeuralNetwork():
         
         # y predicted values from forward pass
         y_hat = self.forward(X)
-        logger.debug(f"Forward pass completed in cost_function, predictions shape: {y_hat.shape}")
+        self.logger.debug(f"Forward pass completed in cost_function, predictions shape: {y_hat.shape}")
         
         # mean squared error
         mse = 0.5 * np.mean((y - y_hat)**2)
@@ -142,7 +148,7 @@ class NeuralNetwork():
         
         # total cost
         J = mse + reg_term
-        logger.debug(f"Cost computed: MSE={mse:.6f}, Reg={reg_term:.6f}, Total={J:.6f}")
+        self.logger.debug(f"Cost computed: MSE={mse:.6f}, Reg={reg_term:.6f}, Total={J:.6f}")
         
         return J
     
@@ -167,7 +173,7 @@ class NeuralNetwork():
         
         # output layer error
         delta = y_hat - y   # shape (N, 1)
-        logger.debug(f"Output layer delta shape: {delta.shape}")
+        self.logger.debug(f"Output layer delta shape: {delta.shape}")
         
         # backprop through layers in reverse
         N = X.shape[0]
@@ -177,41 +183,47 @@ class NeuralNetwork():
             
             # grad for biases
             db[i] = np.mean(delta, axis=0, keepdims=True)
-            logger.debug(f"Layer {i} | dW shape: {dW[i].shape}, db shape: {db[i].shape}")
+            self.logger.debug(f"Layer {i} | dW shape: {dW[i].shape}, db shape: {db[i].shape}")
 
             # delta for prev layer
             if i > 0:
                 delta = (delta @ self.weights[i].T) * self.activation_deriv(self.z_list[i-1])   # except input
-                logger.debug(f"Backpropagated delta for layer {i-1} shape: {delta.shape}")
+                self.logger.debug(f"Backpropagated delta for layer {i-1} shape: {delta.shape}")
 
         return dW, db
 
-    def save_weights(self, filename: str = "model_weights.npz") -> None:
+    def save_weights(self, filename: str = "model_weights.npz", directory: str = None) -> None:
         """
         Save the weights and biases to backend/outputs.
 
         Args:
             filename (str): Name of the file.
+            directory (str): Directory path to save file.
         """
         
         # verify path
-        path = os.path.join("backend", "outputs", filename)
+        if directory is None:
+            directory = os.getcwd()
+        path = os.path.join(directory, filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         
         # save weights
         np.savez(path, *self.weights, *self.biases)
-        logger.info(f"Saved weights and biases to {path}")
+        self.logger.info(f"Saved weights and biases to {path}")
     
-    def load_weights(self, filename: str = "model_weights.npz") -> None:
+    def load_weights(self, filename: str = "model_weights.npz", directory: str = None) -> None:
         """
         Load the weights and biases from backend/outputs.
 
         Args:
             filename (str): Name of the file to load.
+            directory (str): Directory path to save file.
         """
         
         # verify path
-        path = os.path.join("backend", "outputs", filename)
+        if directory is None:
+            directory = os.getcwd()
+        path = os.path.join(directory, filename)
         data = np.load(path)
         total_layers = len(self.weights)
 
@@ -221,4 +233,4 @@ class NeuralNetwork():
         for i in range(total_layers):
             self.biases[i] = data[f"arr_{i + total_layers}"]
 
-        logger.info(f"Loaded weights and biases from {path}")
+        self.logger.info(f"Loaded weights and biases from {path}")

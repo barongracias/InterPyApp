@@ -5,9 +5,12 @@ import os
 
 # local imports
 from .logger import get_console_logger
-logger = get_console_logger(__name__)
 
-def plot_loss(train_loss: list[float], val_loss: list[float], filename: str = "rmse_vs_epochs.png") -> None:
+def plot_loss(train_loss: list[float],
+              val_loss: list[float],
+              filename: str = "rmse_vs_epochs.png",
+              directory: str = None
+              ) -> None:
     """
     Plot training and validation RMSE vs epochs and save the figure in high-quality format.
 
@@ -15,7 +18,14 @@ def plot_loss(train_loss: list[float], val_loss: list[float], filename: str = "r
         train_loss (list[float]): Training RMSE per epoch.
         val_loss (list[float]): Validation RMSE per epoch.
         filename (str): Name of the file.
+        directory (str): Directory path to save file.
     """
+    
+    if directory is None:
+        directory = os.getcwd()
+    logger = get_console_logger(__name__, os.path.join(directory, "logs"))
+    logger.setLevel("INFO")
+    
     try:
         epochs = range(1, len(train_loss) + 1)
         plt.figure(figsize=(8, 6))
@@ -31,7 +41,7 @@ def plot_loss(train_loss: list[float], val_loss: list[float], filename: str = "r
         plt.tight_layout()
         
         # verify path
-        path = os.path.join("backend", "outputs", filename)
+        path = os.path.join(directory, filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         
         # save figure at high DPI
@@ -43,7 +53,11 @@ def plot_loss(train_loss: list[float], val_loss: list[float], filename: str = "r
         logger.error(f"Error creating loss plot: {e}")
 
 
-def plot_predictions(y_true: list[float], y_pred: list[float], filename: str = "ytrue_vs_ypred.png") -> None:
+def plot_predictions(y_true: list[float],
+                     y_pred: list[float],
+                     filename: str = "ytrue_vs_ypred.png",
+                     directory: str = None
+                     ) -> None:
     """
     Plot predicted vs true values for the model and save as a figure.
 
@@ -51,7 +65,14 @@ def plot_predictions(y_true: list[float], y_pred: list[float], filename: str = "
         y_true (list[float]): True target values.
         y_pred (list[float]): Predicted values from the neural network.
         filename (str): Name of the file.
+        directory (str): Directory path to save file.
     """
+    
+    if directory is None:
+        directory = os.getcwd()
+    logger = get_console_logger(__name__, os.path.join(directory, "logs"))
+    logger.setLevel("INFO")
+    
     try:
         plt.figure(figsize=(8, 6))
         plt.scatter(y_true, y_pred, color='navy', s=40, alpha=0.7, label='Predictions')
@@ -69,7 +90,7 @@ def plot_predictions(y_true: list[float], y_pred: list[float], filename: str = "
         plt.tight_layout()
         
         # verify path
-        path = os.path.join("backend", "outputs", filename)
+        path = os.path.join(directory, filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         
         # save figure

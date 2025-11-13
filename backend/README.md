@@ -38,13 +38,18 @@ from interpy_bg.trainer import Trainer
 X = np.random.rand(50, 5)
 y = np.random.rand(50, 1)
 
+# Define output directory
+output_dir = os.path.join("outputs")
+os.makedirs(output_dir, exist_ok=True)
+
 # Initialize trainer
 trainer = Trainer(
     hidden_sizes=[16, 8],
     Lambda=0.01,
     epochs=500,
     learning_rate=0.01,
-    train_val_split=0.8
+    train_val_split=0.8,
+    directory=output_dir
 )
 
 # Train model
@@ -56,6 +61,9 @@ train_loss, val_loss = trainer.train(X, y)
 ```python
 from interpy_bg.tester import Tester
 
+# Use the same output directory where the model was saved
+output_dir = os.path.join("outputs")
+
 tester = Tester(hidden_sizes=[16, 8], Lambda=0.01)
 predictions = tester.predict(X)  # Can also pass a .pkl file with test data
 ```
@@ -65,8 +73,10 @@ predictions = tester.predict(X)  # Can also pass a .pkl file with test data
 ```python
 from interpy_bg.plotter import plot_loss, plot_predictions
 
-plot_loss(train_loss, val_loss, filename="rmse_vs_epochs.png")
-plot_predictions(y, predictions, filename="ytrue_vs_ypred.png")
+output_dir = os.path.join("outputs")
+
+plot_loss(train_loss, val_loss, "rmse_vs_epochs.png", output_dir)
+plot_predictions(y, predictions, "ytrue_vs_ypred.png", output_dir)
 ```
 
 ## Documentation

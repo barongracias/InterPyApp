@@ -24,19 +24,23 @@ def test_pipeline():
     X_train = np.random.rand(50, 5)   # 50 samples, 5 features
     y_train = np.random.rand(50, 1)   # 50 samples, 1 target
 
+    # output directory
+    output_dir = os.path.join("backend", "outputs")
+    os.makedirs(output_dir, exist_ok=True)
+
     # train the network
     trainer = Trainer(
         hidden_sizes=[8, 4],
         Lambda=0.01,
         epochs=200,
         learning_rate=0.1,
-        train_val_split=0.8
+        train_val_split=0.8,
+        directory=output_dir
     )
 
     train_loss, val_loss = trainer.train(X_train, y_train)
 
     # check outputs exist
-    output_dir = os.path.join("backend", "outputs")
     weights_path = os.path.join(output_dir, "model_weights.npz")
     norm_path = os.path.join(output_dir, "normalisation_values.npz")
     loss_plot_path = os.path.join(output_dir, "rmse_vs_epochs.png")
@@ -52,7 +56,7 @@ def test_pipeline():
     assert val_loss[-1] <= val_loss[0], "Validation RMSE did not decrease"
 
     # create a tester instance
-    tester = Tester(hidden_sizes=[8, 4], Lambda=0.01)
+    tester = Tester(hidden_sizes=[8, 4], Lambda=0.01, directory=output_dir)
 
     # test with NumPy array
     X_test = np.random.rand(5, 5)
@@ -73,7 +77,7 @@ def test_pipeline():
         if os.path.exists(pkl_path):
             os.remove(pkl_path)
 
-    print("Full pipeline test passed successfully.")
+    print("🎉 Full pipeline test passed successfully.")
 
 
 if __name__ == "__main__":

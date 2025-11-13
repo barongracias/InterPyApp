@@ -1,3 +1,147 @@
+<a id="main"></a>
+
+# main
+
+<a id="interpy_bg"></a>
+
+# interpy\_bg
+
+<a id="interpy_bg.tester"></a>
+
+# interpy\_bg.tester
+
+<a id="interpy_bg.tester.Tester"></a>
+
+## Tester Objects
+
+```python
+class Tester(NeuralNetwork)
+```
+
+Tester class for trained feedforward neural network. Loads model weights and normalisation values, applies normalisation,
+and calculates predicted outputs for given test inputs.
+
+Inherits from NeuralNetwork.
+
+**Attributes**:
+
+- `directory` _str_ - Directory path to save output files.
+- `mean` _np.ndarray | None_ - Mean of the input training data
+- `std` _np.ndarray | None_ - Standard deviation of the input training data
+
+<a id="interpy_bg.tester.Tester.__init__"></a>
+
+#### \_\_init\_\_
+
+```python
+def __init__(hidden_sizes: list[int], Lambda: float, directory: str)
+```
+
+Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
+
+**Arguments**:
+
+- `hidden_sizes` _list[int]_ - Number of neurons in each hidden layer.
+- `Lambda` _float_ - L2 regularization parameter.
+- `directory` _str_ - Directory path to save output files.
+
+<a id="interpy_bg.tester.Tester.load_norm_vals"></a>
+
+#### load\_norm\_vals
+
+```python
+def load_norm_vals(filename: str = "normalisation_values.npz",
+                   directory: str = None) -> None
+```
+
+Load stored normalisation values (mean and standard deviation)
+
+**Arguments**:
+
+- `filename` _str_ - Name of the file.
+- `directory` _str_ - Directory path to save file.
+
+<a id="interpy_bg.tester.Tester.normalise"></a>
+
+#### normalise
+
+```python
+def normalise(X: np.ndarray) -> np.ndarray
+```
+
+Normalise input using mean and standard deviation.
+
+**Arguments**:
+
+- `X` _np.ndarray_ - Input data, shape (N, 5).
+  
+
+**Returns**:
+
+- `np.ndarray` - Normalised input data, shape (N, 5).
+
+<a id="interpy_bg.tester.Tester.load_test_data"></a>
+
+#### load\_test\_data
+
+```python
+@staticmethod
+def load_test_data(X_data: np.ndarray | str) -> np.ndarray
+```
+
+Load test data from numpy array or pickle (.pkl) file.
+
+**Arguments**:
+
+- `X_data` _np.ndarray | str_ - Input data (N, 5) or path to .pkl file.
+  
+
+**Returns**:
+
+- `np.ndarray` - Input data of shape (N, 5).
+
+<a id="interpy_bg.tester.Tester.predict"></a>
+
+#### predict
+
+```python
+def predict(X_data: np.ndarray | str) -> np.ndarray
+```
+
+Perform interpolation using the trained model.
+
+**Arguments**:
+
+- `X_data` _np.ndarray | str_ - Input data (N, 5) or path to .pkl file.
+  
+
+**Returns**:
+
+- `np.ndarray` - Predicted outputs of shape (N, 1).
+
+<a id="interpy_bg.logger"></a>
+
+# interpy\_bg.logger
+
+<a id="interpy_bg.logger.get_console_logger"></a>
+
+#### get\_console\_logger
+
+```python
+def get_console_logger(name: str, directory: str) -> logging.Logger
+```
+
+Creates a console logger with the given name and log level.
+
+**Arguments**:
+
+- `name` _str_ - Name of the logger (typically __name__ of the module).
+- `directory` _str_ - Directory to store log files. Must exist or be created.
+
+**Returns**:
+
+- `logging.Logger` - Conffigured logger instance.
+
 <a id="interpy_bg.neural_network"></a>
 
 # interpy\_bg.neural\_network
@@ -18,6 +162,8 @@ Feedforward neural network for 5D to 1 interpolation.
 - `hidden_sizes` _list[int]_ - Number of neurons in each hidden layer.
 - `output_size` _int_ - Number of output neurons (fixed at 1).
 - `Lambda` _float_ - L2 regularization parameter.
+- `directory` _str_ - Directory path to save output files.
+- `logger` _logging.Logger_ - Logger instance for class.
 - `layer_sizes` _list[int]_ - Complete list of layer sizes including input, hidden, output.
 - `weights` _list[np.ndarray]_ - Weight matrices for each layer connection.
 - `biases` _list[np.ndarray]_ - Bias vectors for each layer (excluding input layer).
@@ -27,7 +173,7 @@ Feedforward neural network for 5D to 1 interpolation.
 #### \_\_init\_\_
 
 ```python
-def __init__(hidden_sizes: list[int], Lambda: float)
+def __init__(hidden_sizes: list[int], Lambda: float, directory: str)
 ```
 
 Initialize the neural network with random weights and zero biases.
@@ -36,6 +182,7 @@ Initialize the neural network with random weights and zero biases.
 
 - `hidden_sizes` _list[int]_ - List specifying number of neurons in each hidden layer.
 - `Lambda` _float_ - L2 regularisation parameter.
+- `directory` _str_ - Directory path to save output files.
 
 <a id="interpy_bg.neural_network.NeuralNetwork.activation"></a>
 
@@ -147,7 +294,8 @@ Calculate the gradients of the cost function w.r.t. to weights and biases using 
 #### save\_weights
 
 ```python
-def save_weights(filename: str = "model_weights.npz") -> None
+def save_weights(filename: str = "model_weights.npz",
+                 directory: str = None) -> None
 ```
 
 Save the weights and biases to backend/outputs.
@@ -155,13 +303,15 @@ Save the weights and biases to backend/outputs.
 **Arguments**:
 
 - `filename` _str_ - Name of the file.
+- `directory` _str_ - Directory path to save file.
 
 <a id="interpy_bg.neural_network.NeuralNetwork.load_weights"></a>
 
 #### load\_weights
 
 ```python
-def load_weights(filename: str = "model_weights.npz") -> None
+def load_weights(filename: str = "model_weights.npz",
+                 directory: str = None) -> None
 ```
 
 Load the weights and biases from backend/outputs.
@@ -169,6 +319,51 @@ Load the weights and biases from backend/outputs.
 **Arguments**:
 
 - `filename` _str_ - Name of the file to load.
+- `directory` _str_ - Directory path to save file.
+
+<a id="interpy_bg.plotter"></a>
+
+# interpy\_bg.plotter
+
+<a id="interpy_bg.plotter.plot_loss"></a>
+
+#### plot\_loss
+
+```python
+def plot_loss(train_loss: list[float],
+              val_loss: list[float],
+              filename: str = "rmse_vs_epochs.png",
+              directory: str = None) -> None
+```
+
+Plot training and validation RMSE vs epochs and save the figure in high-quality format.
+
+**Arguments**:
+
+- `train_loss` _list[float]_ - Training RMSE per epoch.
+- `val_loss` _list[float]_ - Validation RMSE per epoch.
+- `filename` _str_ - Name of the file.
+- `directory` _str_ - Directory path to save file.
+
+<a id="interpy_bg.plotter.plot_predictions"></a>
+
+#### plot\_predictions
+
+```python
+def plot_predictions(y_true: list[float],
+                     y_pred: list[float],
+                     filename: str = "ytrue_vs_ypred.png",
+                     directory: str = None) -> None
+```
+
+Plot predicted vs true values for the model and save as a figure.
+
+**Arguments**:
+
+- `y_true` _list[float]_ - True target values.
+- `y_pred` _list[float]_ - Predicted values from the neural network.
+- `filename` _str_ - Name of the file.
+- `directory` _str_ - Directory path to save file.
 
 <a id="interpy_bg.trainer"></a>
 
@@ -193,6 +388,7 @@ Inherits from NeuralNetwork and adds functionality for training, calculating RMS
 - `train_val_split` _float_ - Fraction of data used for training.
 - `train_loss_history` _list[float]_ - RMSE per epoch for training set.
 - `val_loss_history` _list[float]_ - RMSE per epoch for validation set.
+- `directory` _str_ - Directory path to save output files.
 - `mean` _np.ndarray | None_ - Mean of the input training data
 - `std` _np.ndarray | None_ - Standard deviation of the input training data
 
@@ -202,7 +398,7 @@ Inherits from NeuralNetwork and adds functionality for training, calculating RMS
 
 ```python
 def __init__(hidden_sizes: list[int], Lambda: float, epochs: int,
-             learning_rate: float, train_val_split: float)
+             learning_rate: float, train_val_split: float, directory: str)
 ```
 
 Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
@@ -214,6 +410,7 @@ Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
 - `epochs` _int_ - Number of training iterations.
 - `learning_rate` _float_ - Learning rate for gradient descent.
 - `train_val_split` _float_ - Fraction of dataset used for training.
+- `directory` _str_ - Directory path to save output files.
 
 <a id="interpy_bg.trainer.Trainer.norm_vals"></a>
 
@@ -253,7 +450,8 @@ Normalise input using mean and standard deviation.
 #### save\_norm\_vals
 
 ```python
-def save_norm_vals(filename: str = "normalisation_values.npz") -> None
+def save_norm_vals(filename: str = "normalisation_values.npz",
+                   directory: str = None) -> None
 ```
 
 Save normalisation values to outputs.
@@ -261,6 +459,7 @@ Save normalisation values to outputs.
 **Arguments**:
 
 - `filename` _str_ - Name of the file.
+- `directory` _str_ - Directory path to save file.
 
 <a id="interpy_bg.trainer.Trainer.calc_rmse"></a>
 
@@ -305,165 +504,3 @@ Train the neural network using gradient descent and track RMSE. Saves RMSE vs ep
   - train_loss_history: RMSE for training set per epoch
   - val_loss_history: RMSE for validation set per epoch
 
-<a id="interpy_bg.tester"></a>
-
-# interpy\_bg.tester
-
-<a id="interpy_bg.tester.Tester"></a>
-
-## Tester Objects
-
-```python
-class Tester(NeuralNetwork)
-```
-
-Tester class for trained feedforward neural network. Loads model weights and normalisation values, applies normalisation,
-and calculates predicted outputs for given test inputs.
-
-Inherits from NeuralNetwork.
-
-**Attributes**:
-
-- `mean` _np.ndarray | None_ - Mean of the input training data
-- `std` _np.ndarray | None_ - Standard deviation of the input training data
-
-<a id="interpy_bg.tester.Tester.__init__"></a>
-
-#### \_\_init\_\_
-
-```python
-def __init__(hidden_sizes: list[int], Lambda: float)
-```
-
-Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
-
-**Arguments**:
-
-- `hidden_sizes` _list[int]_ - Number of neurons in each hidden layer.
-- `Lambda` _float_ - L2 regularization parameter.
-
-<a id="interpy_bg.tester.Tester.load_norm_vals"></a>
-
-#### load\_norm\_vals
-
-```python
-def load_norm_vals(filename: str = "normalisation_values.npz") -> None
-```
-
-Load stored normalisation values (mean and standard deviation)
-
-**Arguments**:
-
-- `filename` _str_ - Name of the file.
-
-<a id="interpy_bg.tester.Tester.normalise"></a>
-
-#### normalise
-
-```python
-def normalise(X: np.ndarray) -> np.ndarray
-```
-
-Normalise input using mean and standard deviation.
-
-**Arguments**:
-
-- `X` _np.ndarray_ - Input data, shape (N, 5).
-  
-
-**Returns**:
-
-- `np.ndarray` - Normalised input data, shape (N, 5).
-
-<a id="interpy_bg.tester.Tester.load_test_data"></a>
-
-#### load\_test\_data
-
-```python
-@staticmethod
-def load_test_data(X_data: np.ndarray | str) -> np.ndarray
-```
-
-Load test data from numpy array or pickle (.pkl) file.
-
-**Arguments**:
-
-- `X_data` _np.ndarray | str_ - Input data (N, 5) or path to .pkl file.
-  
-
-**Returns**:
-
-- `np.ndarray` - Input data of shape (N, 5).
-
-<a id="interpy_bg.tester.Tester.predict"></a>
-
-#### predict
-
-```python
-def predict(X_data: np.ndarray | str) -> np.ndarray
-```
-
-Perform interpolation using the trained model.
-
-**Arguments**:
-
-- `X_data` _np.ndarray | str_ - Input data (N, 5) or path to .pkl file.
-  
-
-**Returns**:
-
-- `np.ndarray` - Predicted outputs of shape (N, 1).
-
-<a id="interpy_bg.plotter"></a>
-
-# interpy\_bg.plotter
-
-<a id="interpy_bg.plotter.plot_loss"></a>
-
-#### plot\_loss
-
-```python
-def plot_loss(train_loss: list[float],
-              val_loss: list[float],
-              filename: str = "rmse_vs_epochs.png") -> None
-```
-
-Plot training and validation RMSE vs epochs and save the figure in high-quality format.
-
-**Arguments**:
-
-- `train_loss` _list[float]_ - Training RMSE per epoch.
-- `val_loss` _list[float]_ - Validation RMSE per epoch.
-- `filename` _str_ - Name of the file.
-
-<a id="interpy_bg.plotter.plot_predictions"></a>
-
-#### plot\_predictions
-
-```python
-def plot_predictions(y_true: list[float],
-                     y_pred: list[float],
-                     filename: str = "ytrue_vs_ypred.png") -> None
-```
-
-Plot predicted vs true values for the model and save as a figure.
-
-**Arguments**:
-
-- `y_true` _list[float]_ - True target values.
-- `y_pred` _list[float]_ - Predicted values from the neural network.
-- `filename` _str_ - Name of the file.
-
-<a id="interpy_bg.logger"></a>
-
-# interpy\_bg.logger
-
-<a id="interpy_bg.logger.get_console_logger"></a>
-
-#### get\_console\_logger
-
-```python
-def get_console_logger(name: str) -> logging.Logger
-```
-
-Creates a console logger with the given name and log level.

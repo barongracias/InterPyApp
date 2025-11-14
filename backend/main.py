@@ -94,7 +94,10 @@ async def train_model(
     Lambda: float = Form(...),
     epochs: int = Form(...),
     learning_rate: float = Form(...),
-    train_val_split: float = Form(...)
+    train_val_split: float = Form(...),
+    beta1: float = Form(0.9),
+    beta2: float = Form(0.999),
+    epsilon: float = Form(1e-8)
 ):
     """
     Train the neural network model using provided hyperparameters and uploaded .pkl file.
@@ -107,12 +110,15 @@ async def train_model(
         hidden_sizes_list = [int(x.strip()) for x in hidden_sizes.split(",") if x.strip()]
 
         trainer = Trainer(
+            directory=OUTPUT_DIR,
             hidden_sizes=hidden_sizes_list,
             Lambda=Lambda,
             epochs=epochs,
             learning_rate=learning_rate,
             train_val_split=train_val_split,
-            directory=OUTPUT_DIR
+            beta1=beta1,
+            beta2=beta2,
+            epsilon=epsilon
         )
 
         train_loss, val_loss = trainer.train(pkl_path)

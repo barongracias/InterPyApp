@@ -1,28 +1,42 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Upload, Settings, Zap, BarChart3, Sparkles } from "lucide-react";
+import { Upload, Settings, Zap, BarChart3, Sparkles, CheckCircle, Loader } from "lucide-react";
 
 export default function Home() {
   const [step, setStep] = useState(1);
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   const [hiddenSizes, setHiddenSizes] = useState("16,8");
   const [Lambda, setLambda] = useState("0.01");
   const [epochs, setEpochs] = useState("500");
   const [learningRate, setLearningRate] = useState("0.01");
   const [trainValSplit, setTrainValSplit] = useState("0.8");
+  const [beta1, setBeta1] = useState("0.9");
+  const [beta2, setBeta2] = useState("0.999");
+  const [epsilon, setEpsilon] = useState("1e-8");
 
   const [trainResult, setTrainResult] = useState<any>(null);
   const [trainLoading, setTrainLoading] = useState(false);
   const [testInput, setTestInput] = useState("0.5,0.5,0.5,0.5,0.5");
   const [testFile, setTestFile] = useState<File | null>(null);
+  const [testFileUploading, setTestFileUploading] = useState(false);
+  const [testFileReady, setTestFileReady] = useState(false);
   const [testMode, setTestMode] = useState<"values" | "file">("values");
   const [predictions, setPredictions] = useState<any>(null);
 
   const backend = "http://localhost:8000";
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] || null;
+    setFile(selectedFile);
+    if (selectedFile) {
+      setUploadMessage("");
+    }
+  };
 
   const handleUpload = async () => {
     if (!file) {
@@ -31,6 +45,7 @@ export default function Home() {
     }
 
     console.log("Starting upload for file:", file.name);
+    setIsUploading(true);
     const formData = new FormData();
     formData.append("file", file);
 
@@ -60,6 +75,20 @@ export default function Home() {
     } catch (error) {
       console.error("Upload error:", error);
       alert(`Upload failed - ${error instanceof Error ? error.message : 'is the backend running?'}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleTestFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] || null;
+    if (selectedFile) {
+      setTestFileUploading(true);
+      setTestFile(selectedFile);
+      setTimeout(() => {
+        setTestFileUploading(false);
+        setTestFileReady(true);
+      }, 500);
     }
   };
 
@@ -79,11 +108,10 @@ export default function Home() {
     };
 
     resetBackend();
-  }, []); // empty dependency array → runs only once on mount
+  }, []);
 
   const handleReset = async () => {
     try {
-      // Call backend to clear uploads and outputs
       const res = await fetch(`${backend}/reset`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
@@ -93,14 +121,16 @@ export default function Home() {
         console.log(data.message);
       }
 
-      // Clear frontend state
       setStep(1);
       setFile(null);
       setFileName("");
       setUploadMessage("");
+      setIsUploading(false);
       setTrainResult(null);
       setPredictions(null);
       setTestFile(null);
+      setTestFileUploading(false);
+      setTestFileReady(false);
       setTestMode("values");
       setTestInput("0.5,0.5,0.5,0.5,0.5");
       setHiddenSizes("16,8");
@@ -108,13 +138,14 @@ export default function Home() {
       setEpochs("500");
       setLearningRate("0.01");
       setTrainValSplit("0.8");
-
+      setBeta1("0.9");
+      setBeta2("0.999");
+      setEpsilon("1e-8");
     } catch (error) {
       console.error("Reset error:", error);
       alert("Failed to reset the app. Is the backend running?");
     }
   };
-
 
   const handleTrain = async () => {
     setTrainLoading(true);
@@ -125,6 +156,9 @@ export default function Home() {
     formData.append("epochs", epochs);
     formData.append("learning_rate", learningRate);
     formData.append("train_val_split", trainValSplit);
+    formData.append("beta1", beta1);
+    formData.append("beta2", beta2);
+    formData.append("epsilon", epsilon);
 
     const res = await fetch(`${backend}/train`, {
       method: "POST",
@@ -173,7 +207,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <div className="max-w-4xl mx-auto px-4 py-12">
-        {/* Header with Reset Button */}
         {step > 1 && (
           <div className="mb-8 flex justify-end">
             <button
@@ -185,7 +218,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Progress Indicator */}
         <div className="mb-12">
           <div className="flex items-center justify-center space-x-2 mb-4">
             {[1, 2, 3, 4, 5].map((s) => (
@@ -249,19 +281,30 @@ export default function Home() {
                 <input
                   type="file"
                   accept=".pkl"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  onChange={handleFileSelect}
                   className="w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-indigo-600 file:to-purple-600 file:text-white file:font-semibold file:cursor-pointer hover:file:shadow-lg file:transition-all"
+                  disabled={isUploading}
                 />
-                {file && (
-                  <p className="mt-4 text-indigo-700 font-medium">📄 Selected: {file.name}</p>
+                {file && !isUploading && (
+                  <div className="mt-4 flex items-center text-indigo-700 font-medium">
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                    <span>📄 Selected: {file.name}</span>
+                  </div>
+                )}
+                {isUploading && (
+                  <div className="mt-4 flex items-center text-indigo-600 font-medium">
+                    <Loader className="w-5 h-5 mr-2 animate-spin" />
+                    <span>Uploading file...</span>
+                  </div>
                 )}
               </div>
 
               <button
                 onClick={handleUpload}
-                className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg"
+                disabled={isUploading || !file}
+                className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                Upload Dataset
+                {isUploading ? "Uploading..." : "Upload Dataset"}
               </button>
 
               {uploadMessage && (
@@ -295,7 +338,7 @@ export default function Home() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                     placeholder="e.g., 16,8"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Comma-separated layer sizes</p>
+                  <p className="text-xs text-gray-500 mt-1">Comma-separated layer sizes (default: 16,8)</p>
                 </div>
 
                 <div>
@@ -310,6 +353,7 @@ export default function Home() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                     placeholder="e.g., 0.01"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Regularization strength (default: 0.01)</p>
                 </div>
               </div>
 
@@ -345,6 +389,7 @@ export default function Home() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                     placeholder="500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Number of training iterations (default: 500)</p>
                 </div>
 
                 <div>
@@ -359,6 +404,7 @@ export default function Home() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                     placeholder="0.01"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Step size for gradient descent (default: 0.01)</p>
                 </div>
 
                 <div>
@@ -373,7 +419,57 @@ export default function Home() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                     placeholder="0.8"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Value between 0 and 1</p>
+                  <p className="text-xs text-gray-500 mt-1">Fraction for training vs validation (default: 0.8)</p>
+                </div>
+
+                <div className="pt-4 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Adam Optimizer Parameters (Optional)</h3>
+                  
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Beta1
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={beta1}
+                        onChange={(e) => setBeta1(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                        placeholder="0.9"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Exponential decay rate for first moment (default: 0.9)</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Beta2
+                      </label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        value={beta2}
+                        onChange={(e) => setBeta2(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                        placeholder="0.999"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Exponential decay rate for second moment (default: 0.999)</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Epsilon
+                      </label>
+                      <input
+                        type="text"
+                        value={epsilon}
+                        onChange={(e) => setEpsilon(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                        placeholder="1e-8"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Small constant for numerical stability (default: 1e-8)</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -440,12 +536,13 @@ export default function Home() {
               <h3 className="text-2xl font-bold text-gray-800 mb-4">🔮 Test Your Model</h3>
               <p className="text-gray-600 mb-6">Choose to upload a pickle file or enter values manually</p>
 
-              {/* Toggle between modes */}
               <div className="flex gap-2 mb-6">
                 <button
                   onClick={() => {
                     setTestMode("values");
                     setPredictions(null);
+                    setTestFile(null);
+                    setTestFileReady(false);
                   }}
                   className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
                     testMode === "values"
@@ -493,11 +590,21 @@ export default function Home() {
                       <input
                         type="file"
                         accept=".pkl"
-                        onChange={(e) => setTestFile(e.target.files?.[0] || null)}
+                        onChange={handleTestFileSelect}
                         className="w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-purple-600 file:to-pink-600 file:text-white file:font-semibold file:cursor-pointer hover:file:shadow-lg file:transition-all"
+                        disabled={testFileUploading}
                       />
-                      {testFile && (
-                        <p className="mt-3 text-purple-700 font-medium">📄 Selected: {testFile.name}</p>
+                      {testFileUploading && (
+                        <div className="mt-3 flex items-center text-purple-600 font-medium">
+                          <Loader className="w-5 h-5 mr-2 animate-spin" />
+                          <span>Processing file...</span>
+                        </div>
+                      )}
+                      {testFileReady && testFile && (
+                        <div className="mt-3 flex items-center text-purple-700 font-medium">
+                          <CheckCircle className="w-5 h-5 mr-2" />
+                          <span>📄 Ready: {testFile.name}</span>
+                        </div>
                       )}
                     </div>
                   </>
@@ -505,7 +612,8 @@ export default function Home() {
 
                 <button
                   onClick={handlePredict}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg"
+                  disabled={testMode === "file" && (!testFile || testFileUploading)}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   Generate Prediction
                 </button>

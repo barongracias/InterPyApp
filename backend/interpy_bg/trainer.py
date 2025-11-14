@@ -22,28 +22,37 @@ class Trainer(NeuralNetwork):
         train_loss_history (list[float]): RMSE per epoch for training set.
         val_loss_history (list[float]): RMSE per epoch for validation set.
         directory (str): Directory path to save output files.
+        beta1 (float): Exponential decay rate for first-moment estimates in Adam.
+        beta2 (float): Exponential decay rate for second-moment estimates in Adam.
+        epsilon (float): Small constant for numerical stability in Adam.
         mean (np.ndarray | None): Mean of the input training data
         std (np.ndarray | None): Standard deviation of the input training data
     """
     
     def __init__(self,
+                 directory: str,
                  hidden_sizes: list[int],
-                 Lambda: float,
-                 epochs: int,
-                 learning_rate: float,
-                 train_val_split: float,
-                 directory: str
+                 Lambda: float = 0.01,
+                 epochs: int = 1000,
+                 learning_rate: float = 0.01,
+                 train_val_split: float = 0.8,
+                 beta1: float = 0.9,
+                 beta2: float = 0.999,
+                 epsilon: float = 1e-8
                  ):
         """
         Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
 
         Args:
+            directory (str): Directory path to save output files.
             hidden_sizes (list[int]): Number of neurons in each hidden layer.
             Lambda (float): L2 regularization parameter.
             epochs (int): Number of training iterations.
             learning_rate (float): Learning rate for gradient descent.
             train_val_split (float): Fraction of dataset used for training.
-            directory (str): Directory path to save output files.
+            beta1 (float): Adam first-moment decay rate (default 0.9).
+            beta2 (float): Adam second-moment decay rate (default 0.999).
+            epsilon (float): Small constant to avoid divide-by-zero in Adam.
         """
         
         super().__init__(hidden_sizes, Lambda, directory)
@@ -52,6 +61,25 @@ class Trainer(NeuralNetwork):
         self.train_val_split: float = train_val_split
         self.train_loss_history: list[float] = []
         self.val_loss_history: list[float] = []
+        
+        # adam hyperparams
+        self.beta1: float = float(beta1)
+        self.beta2: float = float(beta2)
+        self.epsilon: float = float(epsilon)
+        
+        # check adam hyperparams
+        if not 0 < self.beta1 < 1:
+            raise ValueError("beta1 must be between 0 and 1")
+        if not 0 < self.beta2 < 1:
+            raise ValueError("beta2 must be between 0 and 1")
+        if self.epsilon <= 0:
+            raise ValueError("epsilon must be > 0")
+        self.logger.info(f"Initialised Adam hyperparams: beta1: {self.beta1}, beta2: {self.beta2}, epsilon: {self.epsilon}")
+        
+        # initialise bias moments for Adam (weights' m and v are initialised in NeuralNetwork)
+        self.mb: list[np.ndarray] = [np.zeros_like(b) for b in self.biases]
+        self.vb: list[np.ndarray] = [np.zeros_like(b) for b in self.biases]
+        self.logger.debug(f"Initialised Adam moments: mb: {self.mb}, vb: {self.vb}")
         
         # set for later
         self.mean: np.ndarray | None = None
@@ -166,15 +194,13 @@ class Trainer(NeuralNetwork):
     @timer
     def train(self, pkl_path: str) -> tuple[list[float], list[float]]:
         """
-        Train the neural network using gradient descent and track RMSE. Saves RMSE vs epochs plot.
+        Train the neural network using gradient descent with Adam optimiser and track RMSE. Saves RMSE vs epochs plot.
 
         Args:
-            pkl_path (str): Path to .pkl file containing training data.
+            pkl_path (str): Path to .pkl file containing training data (X, y).
 
         Returns:
-            tuple: Two lists of floats:
-                - train_loss_history: RMSE for training set per epoch
-                - val_loss_history: RMSE for validation set per epoch
+            tuple[list[float], list[float]]: Training and validation RMSE histories.
         """
         
         X, y = self.load_train_data(pkl_path)
@@ -199,9 +225,14 @@ class Trainer(NeuralNetwork):
         X_train_norm = self.normalise(X_train)
         X_val_norm = self.normalise(X_val)
         
-        # cache variables for speed
-        weights = self.weights
-        biases = self.biases
+        # Adam cache
+        mb = self.mb
+        vb = self.vb
+        
+        # hyperparams cache
+        beta1 = self.beta1
+        beta2 = self.beta2
+        eps = self.epsilon
         lr = self.learning_rate
         
         # initialise history arrays
@@ -211,50 +242,67 @@ class Trainer(NeuralNetwork):
         # logging checkpoints -> print every 20 times
         log_every = max(1, self.epochs//20)
         
-        # iterate over epochs
+        # training loop
         for epoch in range(self.epochs):
             self.logger.debug(f"Epoch {epoch+1}/{self.epochs} starting")
-            
+
+            # timestep for Adam
+            self.t += 1
+            t = self.t
+
             # apply forward pass
             y_pred_train = self.forward(X_train_norm)
-            
-            # apply backprop
+
+            # apply backprop to return gradients
             dW, db = self.backprop(X_train_norm, y_train, y_pred_train)
-            
-            # update weights and biases
-            for i in range(len(weights)):
-                weights[i] -= lr * dW[i]
-                biases[i] -= lr * db[i]
-                
-            # calculate new preds for logging
-            y_pred_train = self.forward(X_train_norm)
+
+            # Adam update
+            for i in range(len(self.weights)):
+                # update first moment estimates
+                self.m[i] = beta1 * self.m[i] + (1 - beta1) * dW[i]
+                mb[i] = beta1 * mb[i] + (1 - beta1) * db[i]
+
+                # update second moment estimates
+                self.v[i] = beta2 * self.v[i] + (1 - beta2) * (dW[i] ** 2)
+                vb[i] = beta2 * vb[i] + (1 - beta2) * (db[i] ** 2)
+
+                # bias-corrected estimates
+                m_hat = self.m[i] / (1 - beta1 ** t)
+                v_hat = self.v[i] / (1 - beta2 ** t)
+                mb_hat = mb[i] / (1 - beta1 ** t)
+                vb_hat = vb[i] / (1 - beta2 ** t)
+
+                # update parameters
+                self.weights[i] -= lr * m_hat / (np.sqrt(v_hat) + eps)
+                self.biases[i] -= lr * mb_hat / (np.sqrt(vb_hat) + eps)
+
+            # validation predictions
             y_pred_val = self.forward(X_val_norm)
-            
-            # calc and append rmse
+
+            # RMSE
             train_rmse = self.calc_rmse(y_train, y_pred_train)
             val_rmse = self.calc_rmse(y_val, y_pred_val)
-            
+
             train_loss_hist.append(train_rmse)
             val_loss_hist.append(val_rmse)
-            
-            # log
+
+            # periodic logging
             if (epoch + 1) % log_every == 0 or epoch == 0:
-                self.logger.info(f"Epoch {epoch+1}/{self.epochs}: Train RMSE: {train_rmse:.4f}, Val RMSE: {val_rmse:.4f}")
-        
+                self.logger.info(
+                    f"Epoch {epoch+1}/{self.epochs}: "
+                    f"Train RMSE={train_rmse:.4f}, Val RMSE={val_rmse:.4f}"
+                )
+                
         # save loss histories
         self.train_loss_history = train_loss_hist
         self.val_loss_history = val_loss_hist
         
-        # save norm vals
+        # save norm vals and weights
         self.save_norm_vals("normalisation_values.npz", self.directory)
-        
-        # save weights
         self.save_weights("model_weights.npz", self.directory)
         
-        # save RMSE vs Epoch plot
+        # save RMSE vs Epoch plot and y_true vs y_preds plot for final epoch
         plot_loss(train_loss_hist, val_loss_hist, "rmse_vs_epochs.png", self.directory)
-        
-        # save y_true vs y_preds plot for final epoch
         plot_predictions(y_train, y_pred_train, "ytrue_vs_ypred.png", self.directory)
         
         self.logger.debug("Training complete")

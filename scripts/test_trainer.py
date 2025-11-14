@@ -27,12 +27,15 @@ def test_trainer():
     try:
         # Initialise Trainer with test parameters
         trainer = Trainer(
-            hidden_sizes=[8, 4],
+            directory=output_dir,
+            hidden_sizes=[16, 8],
             Lambda=0.01,
-            epochs=200,  # fewer epochs for faster test
-            learning_rate=0.1,
+            epochs=1000,
+            learning_rate=0.01,
             train_val_split=0.8,
-            directory=output_dir
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-8 
         )
 
         # Train the network using the pickle file

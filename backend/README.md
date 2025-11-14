@@ -49,12 +49,15 @@ with open(train_pkl, "wb") as f:
 
 # Initialize trainer
 trainer = Trainer(
+    directory=output_dir,
     hidden_sizes=[16, 8],
-    Lambda=0.01,
-    epochs=500,
-    learning_rate=0.01,
-    train_val_split=0.8,
-    directory=output_dir
+    Lambda=0.01,            # not required, default value set as 0.01
+    epochs=1000,            # not required, default value set as 1000
+    learning_rate=0.01,     # not required, default value set as 0.01
+    train_val_split=0.8,    # not required, default value set as 0.8
+    beta1=0.9,              # not required, default value set as 0.9
+    beta2=0.999,            # not required, default value set as 0.999
+    epsilon=1e-8            # not required, default value set as 1e-8
 )
 
 # Train model

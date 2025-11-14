@@ -11,15 +11,20 @@ class NeuralNetwork():
     Feedforward neural network for 5D to 1 interpolation.
     
     Attributes:
-        input_size (int): Number of input features (fixed at 5).
         hidden_sizes (list[int]): Number of neurons in each hidden layer.
-        output_size (int): Number of output neurons (fixed at 1).
         Lambda (float): L2 regularization parameter.
         directory (str): Directory path to save output files.
+        input_size (int): Number of input features (fixed at 5).
+        output_size (int): Number of output neurons (fixed at 1).
         logger (logging.Logger): Logger instance for class.
         layer_sizes (list[int]): Complete list of layer sizes including input, hidden, output.
         weights (list[np.ndarray]): Weight matrices for each layer connection.
         biases (list[np.ndarray]): Bias vectors for each layer (excluding input layer).
+        m (list[np.ndarray]): Adam first-moment terms for weights.
+        v (list[np.ndarray]): Adam second-moment terms for weights.
+        mb (list[np.ndarray]): Adam first-moment terms for biases.
+        vb (list[np.ndarray]): Adam second-moment terms for biases.
+        t (int): Adam timestep for bias correction.
     """
     
     def __init__(self, hidden_sizes: list[int], Lambda: float, directory: str):
@@ -32,12 +37,13 @@ class NeuralNetwork():
             directory (str): Directory path to save output files.
         """
         
-        # fixed input/output size for 5D interpolation
-        self.input_size: int = 5
         self.hidden_sizes: list[int] = hidden_sizes    # e.g., [16, 32, 16]
-        self.output_size: int = 1
         self.Lambda: float = Lambda
         self.directory: str = directory
+
+        # fixed input/output size for 5D->1D interpolation
+        self.input_size: int = 5
+        self.output_size: int = 1
         
         # logger
         self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
@@ -46,12 +52,24 @@ class NeuralNetwork():
         # initialise layer sizes
         self.layer_sizes: list[int] = [self.input_size] + self.hidden_sizes + [self.output_size]    # e.g., [5, 16, 32, 16, 1]
         
-        # initialise weights with small random numbers (Gaussian)
+        # initialise weights and biases with small random numbers (Gaussian)
         self.weights: list[np.ndarray] = [np.random.randn(self.layer_sizes[i], self.layer_sizes[i+1]) * 0.01 for i in range(len(self.layer_sizes)-1)]
         self.logger.debug(f"Initialised weights: {[w.shape for w in self.weights]}")
         
         self.biases: list[np.ndarray] = [np.zeros((1, self.layer_sizes[i+1])) for i in range(len(self.layer_sizes)-1)]
         self.logger.debug(f"Initialised biases: {[b.shape for b in self.biases]}")
+        
+        # adam optimiser state (weights)
+        self.m: list[np.ndarray] = [np.zeros_like(w) for w in self.weights]   # first moment for weights
+        self.v: list[np.ndarray] = [np.zeros_like(w) for w in self.weights]   # second moment for weights
+
+        # adam optimiser state (biases)
+        self.mb: list[np.ndarray] = [np.zeros_like(b) for b in self.biases]   # first moment for biases
+        self.vb: list[np.ndarray] = [np.zeros_like(b) for b in self.biases]   # second moment for biases
+
+        # timestep for bias correction
+        self.t: int = 0
+        self.logger.debug("Initialised Adam states for weights and biases.")
 
     @log_call
     def activation(self, z: np.ndarray) -> np.ndarray:

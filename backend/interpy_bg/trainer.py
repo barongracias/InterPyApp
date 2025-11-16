@@ -190,7 +190,6 @@ class Trainer(NeuralNetwork):
         
         return np.sqrt(np.mean((y_true - y_pred)**2))
 
-    @log_call
     @timer
     def train(self, pkl_path: str) -> tuple[list[float], list[float]]:
         """

@@ -71,7 +71,6 @@ class NeuralNetwork():
         self.t: int = 0
         self.logger.debug("Initialised Adam states for weights and biases.")
 
-    @log_call
     def activation(self, z: np.ndarray) -> np.ndarray:
         """
         Apply the sigmoid activation function element-wise to the input.
@@ -88,8 +87,7 @@ class NeuralNetwork():
                         1 / (1 + np.exp(-z)),
                         np.exp(z) / (1 + np.exp(z))
                         )
-        
-    @log_call
+    
     def activation_deriv(self, z: np.ndarray) -> np.ndarray:
         """
         Derivative of the sigmoid activation function applied element-wise.
@@ -105,8 +103,6 @@ class NeuralNetwork():
         sigmoid = self.activation(z)
         return sigmoid * (1 - sigmoid)
     
-    @log_call
-    @timer
     def forward(self, X: np.ndarray) -> np.ndarray:
         """
         Perform a forward pass through the network.
@@ -141,8 +137,6 @@ class NeuralNetwork():
         self.logger.debug(f"Forward pass output shape: {self.z_hat_list[-1].shape}")
         return self.z_hat_list[-1]
     
-    @log_call
-    @timer
     def cost_function(self, X: np.ndarray, y: np.ndarray) -> float:
         """
         Compute the cost (loss) of the neural network for given inputs and targets.
@@ -173,8 +167,6 @@ class NeuralNetwork():
         
         return J
     
-    @log_call
-    @timer
     def backprop(self, X: np.ndarray, y: np.ndarray, y_hat: np.ndarray) -> tuple[list[np.ndarray], list[np.ndarray]]:
         """
         Calculate the gradients of the cost function w.r.t. to weights and biases using backpropagation.

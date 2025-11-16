@@ -12,9 +12,8 @@ from interpy_bg.tester import Tester
 # ----------------------
 # DIRECTORIES
 # ----------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
-OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+UPLOAD_DIR = os.path.join("uploads")
+OUTPUT_DIR = os.path.join("outputs")
 
 def clear_directories():
     """Helper to clean uploads and outputs folders."""
@@ -67,7 +66,7 @@ async def root():
 @app.post("/reset")
 async def reset_directories():
     """
-    Clear backend/uploads and backend/outputs.
+    Clear uploads and outputs.
     Triggered when user clicks 'Start Over' or reloads session.
     """
     clear_directories()
@@ -76,7 +75,7 @@ async def reset_directories():
 @app.post("/upload")
 async def upload_pickle(file: UploadFile = File(...)):
     """
-    Upload a .pkl training or testing file. Temporarily stored in backend/uploads.
+    Upload a .pkl training or testing file. Temporarily stored in uploads.
     """
     if not file.filename.endswith(".pkl"):
         return JSONResponse(status_code=400, content={"error": "Only .pkl files are accepted."})

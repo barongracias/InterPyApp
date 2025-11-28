@@ -15,13 +15,29 @@ from interpy_bg.tester import Tester
 UPLOAD_DIR = os.path.join("uploads")
 OUTPUT_DIR = os.path.join("outputs")
 
+def get_app_logger():
+    """Return a module-level logger for main app utilities."""
+    import logging
+    logger = logging.getLogger("interpy_app")
+    if not logger.handlers:
+        logger.setLevel(logging.INFO)
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - (%(name)s) - [%(levelname)s]: %(message)s', datefmt='%d/%m/%y %H:%M:%S')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.propagate = False
+    return logger
+
+app_logger = get_app_logger()
+
 def clear_directories():
     """Helper to clean uploads and outputs folders."""
     for d in [UPLOAD_DIR, OUTPUT_DIR]:
         if os.path.exists(d):
             shutil.rmtree(d)
         os.makedirs(d, exist_ok=True)
-    print("✅ Cleared uploads and outputs directories.")
+    app_logger.info("Cleared uploads and outputs directories.")
 
 # ----------------------
 # LIFESPAN HANDLER (replaces deprecated on_event)
@@ -63,14 +79,12 @@ app.add_middleware(
 async def root():
     return {"message": "Welcome to the 5D Interpolator App API"}
 
-@app.post("/reset")
-async def reset_directories():
+@app.get("/health")
+async def health():
     """
-    Clear uploads and outputs.
-    Triggered when user clicks 'Start Over' or reloads session.
+    Simple health check endpoint.
     """
-    clear_directories()
-    return {"status": "success", "message": "Uploads and outputs cleared."}
+    return {"status": "ok", "version": app.version}
 
 @app.post("/upload")
 async def upload_pickle(file: UploadFile = File(...)):
@@ -84,7 +98,12 @@ async def upload_pickle(file: UploadFile = File(...)):
     with open(file_path, "wb") as f:
         f.write(await file.read())
 
-    return {"message": "File uploaded successfully", "path": file_path}
+    try:
+        stats = Trainer.dataset_stats(file_path)
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": f"File uploaded but could not parse dataset: {e}"})
+
+    return {"message": "File uploaded successfully", "path": file_path, "stats": stats}
 
 @app.post("/train")
 async def train_model(
@@ -136,21 +155,30 @@ async def train_model(
 
 @app.post("/predict")
 async def predict(
-    hidden_sizes: str = Form(...),
-    Lambda: float = Form(...),
+    hidden_sizes: str = Form(None),
+    Lambda: float = Form(None),
     input_file: UploadFile = File(None),
     input_values: str = Form(None)
 ):
     """
     Run predictions using trained model.
+    Uses the trained model architecture and weights saved during /train.
     Accepts either:
       - Uploaded .pkl file
       - Comma-separated input values (5 floats)
     """
     try:
+        # load trained metadata to ensure architecture matches saved weights
+        metadata = Tester.load_metadata(directory=OUTPUT_DIR)
+        trained_hidden_sizes = metadata.get("hidden_sizes")
+        trained_lambda = metadata.get("Lambda")
+
+        if not trained_hidden_sizes or trained_lambda is None:
+            return JSONResponse(status_code=500, content={"error": "Model metadata incomplete. Train the model again."})
+
         tester = Tester(
-            hidden_sizes=[int(x.strip()) for x in hidden_sizes.split(",") if x.strip()],
-            Lambda=Lambda,
+            hidden_sizes=[int(x) for x in trained_hidden_sizes],
+            Lambda=float(trained_lambda),
             directory=OUTPUT_DIR
         )
 

@@ -57,6 +57,7 @@ def test_trainer():
             "model_weights.npz",
             "rmse_vs_epochs.png",
             "ytrue_vs_ypred.png",
+            "model_metadata.json",
         ]
         for fname in expected_files:
             fpath = os.path.join(output_dir, fname)

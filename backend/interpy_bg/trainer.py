@@ -1,7 +1,9 @@
 # imports
+import json
 import numpy as np
 import os
 import pickle
+from typing import Tuple
 
 # local imports
 from .neural_network import NeuralNetwork
@@ -90,19 +92,10 @@ class Trainer(NeuralNetwork):
         self.logger.info(f"Trainer initialised: epochs={epochs}, lr={learning_rate}, train_val_split={train_val_split}")
     
     @staticmethod
-    def load_train_data(pkl_path: str) -> tuple[np.ndarray, np.ndarray]:
+    def load_raw_data(pkl_path: str) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Load training data from a pickle file.
-
-        Expected format is a dictionary with keys "X" and "y".
-
-        Args:
-            pkl_path (str): Path to the pickle file containing training data.
-
-        Returns:
-            tuple: (X, y) as NumPy arrays
+        Load and validate raw X, y arrays from pickle. Imputes NaNs with column means.
         """
-        
         if not os.path.exists(pkl_path):
             raise FileNotFoundError(f"Training pickle file not found: {pkl_path}")
         if not pkl_path.endswith(".pkl"):
@@ -133,7 +126,118 @@ class Trainer(NeuralNetwork):
         if X.shape[1] != 5:
             raise ValueError(f"Expected input features to have 5 columns, got {X.shape[1]}")
 
+        def _impute_nan(arr: np.ndarray) -> np.ndarray:
+            col_mean = np.nanmean(arr, axis=0, keepdims=True)
+            if np.isnan(col_mean).any():
+                raise ValueError("Cannot impute missing values: column contains only NaNs")
+            return np.where(np.isnan(arr), col_mean, arr)
+
+        X = _impute_nan(X)
+        y = _impute_nan(y)
+
         return X, y
+
+    @staticmethod
+    def dataset_stats(pkl_path: str) -> dict:
+        """
+        Return minimal dataset stats for preview: rows, features, min/max for X and y.
+        """
+        X, y = Trainer.load_raw_data(pkl_path)
+        stats = {
+            "rows": int(X.shape[0]),
+            "features": int(X.shape[1]),
+            "x_min": [float(v) for v in np.min(X, axis=0)],
+            "x_max": [float(v) for v in np.max(X, axis=0)],
+            "y_min": float(np.min(y)),
+            "y_max": float(np.max(y)),
+        }
+        return stats
+
+    @staticmethod
+    def load_dataset(
+        pkl_path: str,
+        train_frac: float = 0.7,
+        val_frac: float = 0.15,
+        test_frac: float = 0.15,
+        random_state: int | None = None
+    ) -> dict:
+        """
+        Load and prepare dataset from a pickle file.
+
+        - Accepts dict with keys "X" and "y" (metadata ignored) or legacy tuple/list (X, y)
+        - Validates shapes (X: (N, 5), y: (N, 1))
+        - Handles missing values by imputing column means (raises if an entire column is NaN)
+        - Splits into train/val/test
+        - Standardises features using train-set mean/std and returns splits
+
+        Args:
+            pkl_path (str): Path to the pickle file containing training data.
+            train_frac (float): Fraction of data for training.
+            val_frac (float): Fraction of data for validation.
+            test_frac (float): Fraction of data for testing.
+            random_state (int | None): Optional seed for reproducible shuffling.
+
+        Returns:
+            dict: {
+                "X_train": np.ndarray,
+                "y_train": np.ndarray,
+                "X_val": np.ndarray,
+                "y_val": np.ndarray,
+                "X_test": np.ndarray,
+                "y_test": np.ndarray,
+                "mean": np.ndarray,
+                "std": np.ndarray,
+            }
+        """
+        
+        if train_frac < 0 or val_frac < 0 or test_frac < 0:
+            raise ValueError("Split fractions must be non-negative")
+        if abs(train_frac + val_frac + test_frac - 1.0) > 1e-6:
+            raise ValueError("Split fractions must sum to 1.0")
+
+        X, y = Trainer.load_raw_data(pkl_path)
+
+        # shuffle
+        N = X.shape[0]
+        rng = np.random.default_rng(random_state)
+        idx = rng.permutation(N)
+        X, y = X[idx], y[idx]
+
+        # compute split indices
+        train_end = int(N * train_frac)
+        val_end = train_end + int(N * val_frac)
+        if train_end == 0 or val_end == train_end:
+            raise ValueError("Empty train or validation split; adjust split fractions")
+        if val_end > N:
+            val_end = N
+
+        X_train, y_train = X[:train_end], y[:train_end]
+        X_val, y_val = X[train_end:val_end], y[train_end:val_end]
+        X_test, y_test = X[val_end:], y[val_end:]
+
+        # standardise using train mean/std
+        mean = X_train.mean(axis=0)
+        std = X_train.std(axis=0) + 1e-8  # avoid division by zero
+
+        def _standardise(arr: np.ndarray) -> np.ndarray:
+            if arr.size == 0:
+                return arr
+            return (arr - mean) / std
+
+        X_train_norm = _standardise(X_train)
+        X_val_norm = _standardise(X_val)
+        X_test_norm = _standardise(X_test)
+
+        return {
+            "X_train": X_train_norm,
+            "y_train": y_train,
+            "X_val": X_val_norm,
+            "y_val": y_val,
+            "X_test": X_test_norm,
+            "y_test": y_test,
+            "mean": mean,
+            "std": std,
+        }
     
     @log_call
     def norm_vals(self, X_train: np.ndarray) -> None:
@@ -180,6 +284,28 @@ class Trainer(NeuralNetwork):
         
         np.savez(path, mean=self.mean, std=self.std)
         self.logger.info(f"Normalisation values saved to {path}")
+
+    @log_call
+    def save_metadata(self, filename: str = "model_metadata.json", directory: str = None) -> None:
+        """
+        Save model metadata needed for inference (architecture and regularisation).
+
+        Args:
+            filename (str): Name of the metadata file.
+            directory (str): Directory path to save file.
+        """
+        if directory is None:
+            directory = os.getcwd()
+        path = os.path.join(directory, filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+
+        metadata = {
+            "hidden_sizes": self.hidden_sizes,
+            "Lambda": self.Lambda,
+        }
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f)
+        self.logger.info(f"Model metadata saved to {path}")
     
     @staticmethod
     def calc_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -208,27 +334,23 @@ class Trainer(NeuralNetwork):
             tuple[list[float], list[float]]: Training and validation RMSE histories.
         """
         
-        X, y = self.load_train_data(pkl_path)
-        self.logger.info(f"Loaded training data: {X.shape[0]} samples")
+        splits = self.load_dataset(
+            pkl_path,
+            train_frac=self.train_val_split,
+            val_frac=1 - self.train_val_split,
+            test_frac=0.0,
+        )
+        X_train_norm = splits["X_train"]
+        y_train = splits["y_train"]
+        X_val_norm = splits["X_val"]
+        y_val = splits["y_val"]
 
-        # shuffle
-        idx = np.random.permutation(X.shape[0])
-        X, y = X[idx], y[idx]
-        
-        # split into train/val
-        N = X.shape[0]
-        split_index = int(N * self.train_val_split)
-        if split_index == 0 or split_index == N:
-            raise ValueError("Empty train or val set, adjust train_val_split")
-        
-        X_train, X_val = X[:split_index], X[split_index:]
-        y_train, y_val = y[:split_index], y[split_index:]
-        self.logger.info(f"Training samples: {len(X_train)}, Validation samples: {len(X_val)}")
-        
-        # normalise data
-        self.norm_vals(X_train)
-        X_train_norm = self.normalise(X_train)
-        X_val_norm = self.normalise(X_val)
+        # cache norm stats for saving/predict
+        self.mean = splits["mean"]
+        self.std = splits["std"]
+
+        self.logger.info(f"Loaded training data: {y_train.shape[0] + y_val.shape[0]} samples")
+        self.logger.info(f"Training samples: {len(X_train_norm)}, Validation samples: {len(X_val_norm)}")
         
         # Adam cache
         mb = self.mb
@@ -305,6 +427,7 @@ class Trainer(NeuralNetwork):
         # save norm vals and weights
         self.save_norm_vals("normalisation_values.npz", self.directory)
         self.save_weights("model_weights.npz", self.directory)
+        self.save_metadata("model_metadata.json", self.directory)
         
         # save RMSE vs Epoch plot and y_true vs y_preds plot for final epoch
         plot_loss(train_loss_hist, val_loss_hist, "rmse_vs_epochs.png", self.directory)

@@ -9,21 +9,23 @@ It provides modular classes for defining, training, and testing neural networks,
 - L2 regularization
 - Training with RMSE tracking and validation split
 - Normalization of input data
-- Save/load trained weights and normalization values
+- Save/load trained weights, normalization values, and model metadata
 - Simple plotting of training/validation loss and predictions
+- Dataset validation/standardisation with train/val/test splits
+- Synthetic 5D data generator utilities
 
 ## Installation
 
 Install via pip:
 
 ```bash
-pip install interpy-bg
+pip install interpy_bg
 ```
 
 or directly via GitHub:
 
 ```bash
-pip install git+https://github.com/barongracias/InterPyApp.git#egg=interpy-bg&subdirectory=interpy_bg
+pip install git+https://github.com/barongracias/InterPyApp.git#egg=interpy-bg&subdirectory=backend
 ```
 
 ## Quick Start
@@ -72,7 +74,7 @@ from interpy_bg.tester import Tester
 # Use the same output directory where the model was saved
 output_dir = os.path.join("outputs")
 
-tester = Tester(hidden_sizes=[16, 8], Lambda=0.01)
+tester = Tester(hidden_sizes=[16, 8], Lambda=0.01, directory=output_dir)
 predictions = tester.predict(X)  # Can also pass a .pkl file with test data
 ```
 
@@ -86,6 +88,29 @@ output_dir = os.path.join("outputs")
 plot_loss(train_loss, val_loss, "rmse_vs_epochs.png", output_dir)
 plot_predictions(y, predictions, "ytrue_vs_ypred.png", output_dir)
 ```
+
+### Synthetic data
+
+```python
+from interpy_bg.synthetic import synthetic_5d, synthetic_5d_pickle
+
+# Generate arrays
+X, y = synthetic_5d(1000, seed=42)
+
+# Persist with metadata
+path = synthetic_5d_pickle("outputs/synth.pkl", n=1000, seed=42)
+```
+
+## Tests
+
+- Core library tests: `tests/` (e.g., `tests/test_trainer.py`, `tests/test_pipeline.py`).
+- API/synthetic/performance tests: `backend/tests/` (e.g., `test_api.py`, `test_synthetic.py`, `test_performance.py`).
+
+## Notes
+
+- Training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture and Lambda) into the outputs directory.
+- Prediction (`/predict` or `Tester.predict`) uses the trained architecture and regularisation loaded from `model_metadata.json`; client-supplied hidden sizes or Lambda are ignored.
+- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, and `/plots/{filename}`.
 
 ## Documentation
 

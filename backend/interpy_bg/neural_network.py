@@ -45,7 +45,7 @@ class NeuralNetwork():
         self.input_size: int = 5
         self.output_size: int = 1
         
-        # logger
+        # logger (Trainer/Tester override this to their own module logger after init)
         self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
         self.logger.info(f"NeuralNetwork initialized: 5 inputs, hidden layers {hidden_sizes}, 1 output")
         

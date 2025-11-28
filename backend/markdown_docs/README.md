@@ -412,27 +412,31 @@ Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
 - `train_val_split` _float_ - Fraction of dataset used for training.
 - `directory` _str_ - Directory path to save output files.
 
-<a id="interpy_bg.trainer.Trainer.load_train_data"></a>
+<a id="interpy_bg.trainer.Trainer.load_dataset"></a>
 
-#### load\_train\_data
+#### load\_dataset
 
 ```python
 @staticmethod
-def load_train_data(pkl_path: str) -> tuple[np.ndarray, np.ndarray]
+def load_dataset(pkl_path: str, train_frac: float = 0.7,
+                 val_frac: float = 0.15, test_frac: float = 0.15,
+                 random_state: int | None = None) -> dict
 ```
 
-Load training data from a pickle file.
-
-The pickle must contain a tuple (X, y).
+Load and prepare dataset from a pickle file (dict with keys "X" and "y" or legacy tuple/list). Validates shapes, imputes NaNs with column means, shuffles, splits into train/val/test, and standardises features using the train split.
 
 **Arguments**:
 
 - `pkl_path` _str_ - Path to the pickle file containing training data.
+- `train_frac` _float_ - Fraction of data for training.
+- `val_frac` _float_ - Fraction of data for validation.
+- `test_frac` _float_ - Fraction of data for testing.
+- `random_state` _int | None_ - Optional seed for reproducible shuffling.
   
 
 **Returns**:
 
-- `tuple` - (X, y) as NumPy arrays
+- `dict` - Normalised splits and mean/std (`X_train`, `y_train`, `X_val`, `y_val`, `X_test`, `y_test`, `mean`, `std`)
 
 <a id="interpy_bg.trainer.Trainer.norm_vals"></a>
 
@@ -524,4 +528,3 @@ Train the neural network using gradient descent and track RMSE. Saves RMSE vs ep
 - `tuple` - Two lists of floats:
   - train_loss_history: RMSE for training set per epoch
   - val_loss_history: RMSE for validation set per epoch
-

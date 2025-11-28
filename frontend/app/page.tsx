@@ -27,8 +27,11 @@ export default function Home() {
   const [testFileReady, setTestFileReady] = useState(false);
   const [testMode, setTestMode] = useState<"values" | "file">("values");
   const [predictions, setPredictions] = useState<any>(null);
+  const [healthStatus, setHealthStatus] = useState<"checking" | "ok" | "error">("checking");
+  const [datasetStats, setDatasetStats] = useState<any>(null);
 
   const backend = "http://localhost:8000";
+  const backendAvailable = healthStatus === "ok";
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
@@ -62,6 +65,7 @@ export default function Home() {
 
       if (res.ok) {
         setUploadMessage(`✅ Uploaded: ${data.path || file.name}`);
+        setDatasetStats(data.stats || null);
         setFileName(file.name);
         console.log("Upload successful, proceeding to step 3");
         setTimeout(() => {
@@ -93,6 +97,21 @@ export default function Home() {
   };
 
   useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch(`${backend}/health`);
+        if (!res.ok) {
+          setHealthStatus("error");
+          return;
+        }
+        const data = await res.json();
+        setHealthStatus(data.status === "ok" ? "ok" : "error");
+      } catch (error) {
+        console.error("Health check error:", error);
+        setHealthStatus("error");
+      }
+    };
+
     const resetBackend = async () => {
       try {
         const res = await fetch(`${backend}/reset`, { method: "POST" });
@@ -108,6 +127,7 @@ export default function Home() {
     };
 
     resetBackend();
+    checkHealth();
   }, []);
 
   const handleReset = async () => {
@@ -128,6 +148,7 @@ export default function Home() {
       setIsUploading(false);
       setTrainResult(null);
       setPredictions(null);
+      setDatasetStats(null);
       setTestFile(null);
       setTestFileUploading(false);
       setTestFileReady(false);
@@ -219,6 +240,28 @@ export default function Home() {
         )}
 
         <div className="mb-12">
+          <div className="flex justify-end mb-2">
+            <span
+              className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                healthStatus === "ok"
+                  ? "bg-green-100 text-green-700"
+                  : healthStatus === "error"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {healthStatus === "checking"
+                ? "Checking backend..."
+                : healthStatus === "ok"
+                ? "Backend healthy"
+                : "Backend unavailable"}
+            </span>
+          </div>
+          {healthStatus === "error" && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl">
+              Backend unavailable. Check that the server is running at {backend}.
+            </div>
+          )}
           <div className="flex items-center justify-center space-x-2 mb-4">
             {[1, 2, 3, 4, 5].map((s) => (
               <div key={s} className="flex items-center">
@@ -282,7 +325,7 @@ export default function Home() {
                   accept=".pkl"
                   onChange={handleFileSelect}
                   className="w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-indigo-600 file:to-purple-600 file:text-white file:font-semibold file:cursor-pointer hover:file:shadow-lg file:transition-all"
-                  disabled={isUploading}
+                  disabled={isUploading || !backendAvailable}
                 />
                 {file && !isUploading && (
                   <div className="mt-4 flex items-center text-indigo-700 font-medium">
@@ -300,15 +343,26 @@ export default function Home() {
 
               <button
                 onClick={handleUpload}
-                disabled={isUploading || !file}
+                disabled={isUploading || !file || !backendAvailable}
                 className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {isUploading ? "Uploading..." : "Upload Dataset"}
               </button>
 
               {uploadMessage && (
-                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl space-y-3">
                   <p className="text-green-700 font-medium">{uploadMessage}</p>
+                  {datasetStats && (
+                    <div className="text-sm text-gray-700">
+                      <p className="font-semibold mb-1">Dataset preview</p>
+                      <p>Rows: {datasetStats.rows}</p>
+                      <p>Features: {datasetStats.features}</p>
+                      <p>X min: {datasetStats.x_min.join(", ")}</p>
+                      <p>X max: {datasetStats.x_max.join(", ")}</p>
+                      <p>y min: {datasetStats.y_min}</p>
+                      <p>y max: {datasetStats.y_max}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -474,7 +528,7 @@ export default function Home() {
 
               <button
                 onClick={handleTrain}
-                disabled={trainLoading}
+                disabled={trainLoading || !backendAvailable}
                 className="w-full mt-8 px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {trainLoading ? (
@@ -611,7 +665,7 @@ export default function Home() {
 
                 <button
                   onClick={handlePredict}
-                  disabled={testMode === "file" && (!testFile || testFileUploading)}
+                  disabled={!backendAvailable || (testMode === "file" && (!testFile || testFileUploading))}
                   className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   Generate Prediction

@@ -2,6 +2,7 @@
 import numpy as np
 import os
 import pickle
+import json
 
 # local imports
 from .neural_network import NeuralNetwork
@@ -23,7 +24,7 @@ class Tester(NeuralNetwork):
     
     def __init__(self, hidden_sizes: list[int], Lambda: float, directory: str):
         """
-        Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
+        Initialise Tester with hyperparameters and call NeuralNetwork constructor.
 
         Args:
             hidden_sizes (list[int]): Number of neurons in each hidden layer.
@@ -38,6 +39,26 @@ class Tester(NeuralNetwork):
         # logger
         self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
         self.logger.info("Tester initialised")
+
+    @staticmethod
+    def load_metadata(filename: str = "model_metadata.json", directory: str = None) -> dict:
+        """
+        Load stored model metadata (architecture and regularisation).
+
+        Args:
+            filename (str): Metadata filename.
+            directory (str): Directory path to load from.
+        """
+        
+        if directory is None:
+            directory = os.getcwd()
+        path = os.path.join(directory, filename)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Metadata file not found: {path}")
+        
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data
     
     @log_call
     def load_norm_vals(self, filename: str = "normalisation_values.npz", directory: str = None) -> None:
@@ -125,12 +146,17 @@ class Tester(NeuralNetwork):
             np.ndarray: Predicted outputs of shape (N, 1).
         """
         
-        # load model weights and norm vals
-        if not hasattr(self, "weights") or self.weights is None:
-            self.load_weights("model_weights.npz", self.directory)
+        # load model weights and norm vals (always prefer saved artifacts if present)
+        weights_path = os.path.join(self.directory, "model_weights.npz")
+        norm_path = os.path.join(self.directory, "normalisation_values.npz")
 
-        if self.mean is None or self.std is None:
-            self.load_norm_vals("normalisation_values.npz", self.directory)
+        if not os.path.exists(weights_path):
+            raise FileNotFoundError(f"Trained weights not found at {weights_path}. Run training first.")
+        if not os.path.exists(norm_path):
+            raise FileNotFoundError(f"Normalisation values not found at {norm_path}. Run training first.")
+
+        self.load_weights("model_weights.npz", self.directory)
+        self.load_norm_vals("normalisation_values.npz", self.directory)
         
         # load and normalise input testing data
         X_test = self.load_test_data(X_data)

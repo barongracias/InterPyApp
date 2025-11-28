@@ -14,7 +14,7 @@ def test_tester():
     os.makedirs(output_dir, exist_ok=True)
 
     # Initialise tester
-    hidden_sizes = [8, 4]
+    hidden_sizes = [16, 8]
     Lambda = 0.01
     tester = Tester(hidden_sizes=hidden_sizes, Lambda=Lambda, directory=output_dir)
 

@@ -94,7 +94,7 @@ class Trainer(NeuralNetwork):
         """
         Load training data from a pickle file.
 
-        The pickle must contain a tuple (X, y).
+        Expected format is a dictionary with keys "X" and "y".
 
         Args:
             pkl_path (str): Path to the pickle file containing training data.
@@ -110,12 +110,18 @@ class Trainer(NeuralNetwork):
 
         with open(pkl_path, "rb") as f:
             data = pickle.load(f)
-
-        if not isinstance(data, (tuple, list)) or len(data) != 2:
-            raise ValueError("Pickle file must contain a tuple (X, y)")
-
-        X = np.array(data[0], dtype=float)
-        y = np.array(data[1], dtype=float)
+            
+        if isinstance(data, dict):
+            if "X" not in data or "y" not in data:
+                raise ValueError("Pickle dictionary must contain 'X' and 'y' keys")
+            X = np.array(data["X"], dtype=float)
+            y = np.array(data["y"], dtype=float)
+        elif isinstance(data, (tuple, list)) and len(data) == 2:
+            # legacy support for tuple/list format (X, y)
+            X = np.array(data[0], dtype=float)
+            y = np.array(data[1], dtype=float)
+        else:
+            raise ValueError("Pickle file must contain a dict with 'X' and 'y', or a tuple/list (X, y)")
 
         if X.ndim == 1:
             X = X.reshape(1, -1)

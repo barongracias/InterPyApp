@@ -42,10 +42,10 @@ y = np.random.rand(50, 1)
 output_dir = os.path.join("outputs")
 os.makedirs(output_dir, exist_ok=True)
 
-# Save training data to a pickle file
+# Save training data to a pickle file as a dictionary with keys "X" and "y"
 train_pkl = os.path.join(output_dir, "train_data.pkl")
 with open(train_pkl, "wb") as f:
-    pickle.dump((X, y), f)
+    pickle.dump({"X": X, "y": y}, f)
 
 # Initialize trainer
 trainer = Trainer(
@@ -60,11 +60,11 @@ trainer = Trainer(
     epsilon=1e-8            # not required, default value set as 1e-8
 )
 
-# Train model
-train_loss, val_loss = trainer.train(X, y)
+# Train model using the pickle file path
+train_loss, val_loss = trainer.train(train_pkl)
 ```
 
-### Training a model
+### Testing a model
 
 ```python
 from interpy_bg.tester import Tester

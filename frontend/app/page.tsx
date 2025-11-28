@@ -254,8 +254,7 @@ export default function Home() {
               </h1>
               <p className="text-gray-600 text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
                 Train and test a powerful neural network interpolator using your dataset. 
-                Upload a pickle file containing <code className="bg-gray-100 px-2 py-1 rounded text-sm">(X, y)</code> where{" "}
-                <code className="bg-gray-100 px-2 py-1 rounded text-sm">X</code> has shape (N, 5).
+                Upload a pickle file containing a dictionary with keys <code className="bg-gray-100 px-2 py-1 rounded text-sm">X</code> (shape (N, 5)) and <code className="bg-gray-100 px-2 py-1 rounded text-sm">y</code> (shape (N,) or (N, 1)); extra metadata is ignored.
               </p>
               <button
                 onClick={() => setStep(2)}

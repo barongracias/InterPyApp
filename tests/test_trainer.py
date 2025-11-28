@@ -19,10 +19,10 @@ def test_trainer():
     output_dir = os.path.join("backend", "outputs")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Create temporary pickle file for training data
+    # Create temporary pickle file for training data (dict with X and y)
     train_pkl_path = os.path.join(output_dir, "Xy_train.pkl")
     with open(train_pkl_path, "wb") as f:
-        pickle.dump((X, y), f)
+        pickle.dump({"X": X, "y": y}, f)
 
     try:
         # Initialise Trainer with test parameters

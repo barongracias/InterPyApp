@@ -28,10 +28,10 @@ def test_pipeline():
     output_dir = os.path.join("backend", "outputs")
     os.makedirs(output_dir, exist_ok=True)
 
-    # create temporary pickle file for training data
+    # create temporary pickle file for training data (dict with X and y)
     train_pkl_path = os.path.join(output_dir, "Xy_train.pkl")
     with open(train_pkl_path, "wb") as f:
-        pickle.dump((X_train, y_train), f)
+        pickle.dump({"X": X_train, "y": y_train}, f)
 
     try:
         # train the network

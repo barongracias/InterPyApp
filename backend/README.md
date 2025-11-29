@@ -35,6 +35,7 @@ pip install git+https://github.com/barongracias/InterPyApp.git#egg=interpy-bg&su
 ```python
 import numpy as np
 from interpy_bg.trainer import Trainer
+import os, pickle
 
 # Dummy dataset
 X = np.random.rand(50, 5)
@@ -54,12 +55,19 @@ trainer = Trainer(
     directory=output_dir,
     hidden_sizes=[16, 8],
     Lambda=0.01,            # not required, default value set as 0.01
-    epochs=1000,            # not required, default value set as 1000
+    epochs=300,             # reduce for quicker runs
     learning_rate=0.01,     # not required, default value set as 0.01
     train_val_split=0.8,    # not required, default value set as 0.8
     beta1=0.9,              # not required, default value set as 0.9
     beta2=0.999,            # not required, default value set as 0.999
-    epsilon=1e-8            # not required, default value set as 1e-8
+    epsilon=1e-8,           # not required, default value set as 1e-8
+    activation="relu",      # optional: sigmoid/tanh/relu/leakyrelu
+    weight_init="auto",     # optional: auto/he/xavier
+    batch_size=32,          # optional: mini-batching
+    grad_clip=5.0,          # optional: gradient clipping
+    early_stop_patience=20, # optional: early stopping
+    lr_decay=0.98,          # optional: LR decay per epoch
+    seed=42,                # optional: reproducibility
 )
 
 # Train model using the pickle file path
@@ -74,7 +82,13 @@ from interpy_bg.tester import Tester
 # Use the same output directory where the model was saved
 output_dir = os.path.join("outputs")
 
-tester = Tester(hidden_sizes=[16, 8], Lambda=0.01, directory=output_dir)
+tester = Tester(
+    hidden_sizes=[16, 8],
+    Lambda=0.01,
+    directory=output_dir,
+    activation="relu",
+    weight_init="auto",
+)
 predictions = tester.predict(X)  # Can also pass a .pkl file with test data
 ```
 
@@ -108,9 +122,9 @@ path = synthetic_5d_pickle("outputs/synth.pkl", n=1000, seed=42)
 
 ## Notes
 
-- Training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture and Lambda) into the outputs directory.
-- Prediction (`/predict` or `Tester.predict`) uses the trained architecture and regularisation loaded from `model_metadata.json`; client-supplied hidden sizes or Lambda are ignored.
-- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, and `/plots/{filename}`.
+- Training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture, Lambda, activation/init, batch/clip/seed, best metrics incl. R²) into the outputs directory.
+- Prediction (`/predict` or `Tester.predict`) uses the trained architecture/config in `model_metadata.json`; client-supplied hidden sizes or Lambda are ignored.
+- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}`, and `/evaluate`.
 
 ## Documentation
 

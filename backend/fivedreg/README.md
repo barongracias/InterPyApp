@@ -3,8 +3,8 @@
 TensorFlow/Keras implementation of the 5D → 1D regressor, mirroring the numpy-based `interpy_bg` API.
 
 ## Modules
-- `tf_model.py`: `build_tf_model(hidden_sizes, Lambda)` builds a Sequential model with L2 regularisation.
-- `trainer_tf.py`: `TrainerTF` loads/validates data (via `interpy_bg.Trainer.load_dataset`), trains a TF model, and saves `model_tf.keras` plus normalisation values.
+- `tf_model.py`: `build_tf_model(hidden_sizes, Lambda)` builds a Sequential model with L2 regularisation and He/Xavier init.
+- `trainer_tf.py`: `TrainerTF` loads/validates data (via `interpy_bg.Trainer.load_dataset`), trains a TF model, and saves `model_tf.keras` plus normalisation values. Optional early stopping and LR decay.
 - `tester_tf.py`: `TesterTF` loads the saved TF model and normalisation stats to make predictions on NumPy arrays or .pkl files.
 
 ## Usage
@@ -18,7 +18,14 @@ out_dir = "outputs_tf"
 os.makedirs(out_dir, exist_ok=True)
 data_path = synthetic_5d_pickle(os.path.join(out_dir, "train.pkl"), n=1000, seed=42)
 
-trainer = TrainerTF(directory=out_dir, hidden_sizes=[64, 32, 16], epochs=100, learning_rate=0.01)
+trainer = TrainerTF(
+    directory=out_dir,
+    hidden_sizes=[64, 32, 16],
+    epochs=100,
+    learning_rate=0.01,
+    early_stop_patience=10,
+    lr_decay=0.95,
+)
 train_rmse, val_rmse = trainer.train(data_path)
 
 tester = TesterTF(directory=out_dir)

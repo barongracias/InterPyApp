@@ -32,7 +32,19 @@ Usage
     X_train = np.random.rand(100, 5)
     y_train = np.random.rand(100, 1)
 
-    trainer = Trainer(directory=\"outputs\", hidden_sizes=[10, 5], Lambda=0.01, epochs=500, learning_rate=0.01, train_val_split=0.8)
+    trainer = Trainer(
+        directory=\"outputs\",
+        hidden_sizes=[10, 5],
+        Lambda=0.01,
+        epochs=300,
+        learning_rate=0.01,
+        train_val_split=0.8,
+        activation=\"relu\",
+        batch_size=32,
+        early_stop_patience=20,
+        lr_decay=0.98,
+        seed=42,
+    )
     train_loss, val_loss = trainer.train(\"path/to/train.pkl\")  # .pkl file with dict {\"X\": X_train, \"y\": y_train}
 
     # Example: testing

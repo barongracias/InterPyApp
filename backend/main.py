@@ -158,6 +158,11 @@ async def train_model(
     epsilon: float = Form(1e-8),
     early_stop_patience: int | None = Form(None),
     lr_decay: float | None = Form(None),
+    activation: str = Form("relu"),
+    weight_init: str = Form("auto"),
+    batch_size: int | None = Form(None),
+    grad_clip: float | None = Form(None),
+    seed: int | None = Form(None),
 ):
     """
     Train the neural network model using provided hyperparameters and uploaded .pkl file.
@@ -177,6 +182,16 @@ async def train_model(
             return JSONResponse(status_code=400, content={"error": "early_stop_patience must be positive if provided."})
         if lr_decay is not None and not (0 < lr_decay < 1):
             return JSONResponse(status_code=400, content={"error": "lr_decay must be between 0 and 1 if provided."})
+        if activation.lower() not in {"sigmoid", "tanh", "relu", "leakyrelu"}:
+            return JSONResponse(status_code=400, content={"error": "activation must be sigmoid, tanh, relu, or leakyrelu."})
+        if weight_init.lower() not in {"auto", "he", "xavier"}:
+            return JSONResponse(status_code=400, content={"error": "weight_init must be auto, he, or xavier."})
+        if batch_size is not None and batch_size <= 0:
+            return JSONResponse(status_code=400, content={"error": "batch_size must be positive if provided."})
+        if grad_clip is not None and grad_clip <= 0:
+            return JSONResponse(status_code=400, content={"error": "grad_clip must be positive if provided."})
+        if seed is not None and seed < 0:
+            return JSONResponse(status_code=400, content={"error": "seed must be non-negative if provided."})
 
         trainer = Trainer(
             directory=OUTPUT_DIR,
@@ -190,6 +205,11 @@ async def train_model(
             epsilon=epsilon,
             early_stop_patience=early_stop_patience,
             lr_decay=lr_decay,
+            activation=activation,
+            weight_init=weight_init,
+            batch_size=batch_size,
+            grad_clip=grad_clip,
+            seed=seed,
         )
 
         train_loss, val_loss = trainer.train(pkl_path)
@@ -205,6 +225,8 @@ async def train_model(
             "best_epoch": trainer.best_epoch,
             "epochs_run": len(train_loss),
             "baseline_rmse": trainer.baseline_rmse,
+            "final_train_r2": trainer.final_train_r2,
+            "final_val_r2": trainer.final_val_r2,
             "plots": ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"],
             "artifacts": list(ALLOWED_ARTIFACTS),
         }
@@ -252,7 +274,9 @@ async def predict(
         tester = Tester(
             hidden_sizes=[int(x) for x in trained_hidden_sizes],
             Lambda=float(trained_lambda),
-            directory=OUTPUT_DIR
+            directory=OUTPUT_DIR,
+            activation=metadata.get("activation", "sigmoid"),
+            weight_init=metadata.get("weight_init", "auto"),
         )
 
         if input_file:
@@ -325,6 +349,8 @@ async def evaluate_model(file: UploadFile = File(...)):
             hidden_sizes=[int(x) for x in metadata.get("hidden_sizes", [])],
             Lambda=float(metadata.get("Lambda", 0.01)),
             directory=OUTPUT_DIR,
+            activation=metadata.get("activation", "sigmoid"),
+            weight_init=metadata.get("weight_init", "auto"),
         )
 
         # load data to get y

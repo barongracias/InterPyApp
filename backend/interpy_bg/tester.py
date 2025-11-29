@@ -22,7 +22,7 @@ class Tester(NeuralNetwork):
         std (np.ndarray | None): Standard deviation of the input training data
     """
     
-    def __init__(self, hidden_sizes: list[int], Lambda: float, directory: str):
+    def __init__(self, hidden_sizes: list[int], Lambda: float, directory: str, activation: str = "sigmoid", weight_init: str = "auto", seed: int | None = None):
         """
         Initialise Tester with hyperparameters and call NeuralNetwork constructor.
 
@@ -30,9 +30,12 @@ class Tester(NeuralNetwork):
             hidden_sizes (list[int]): Number of neurons in each hidden layer.
             Lambda (float): L2 regularization parameter.
             directory (str): Directory path to save output files.
+            activation (str): Activation for hidden layers (should match training).
+            weight_init (str): Weight init strategy; used only for completeness when constructing.
+            seed (int | None): Optional seed (not required for inference).
         """
         
-        super().__init__(hidden_sizes, Lambda, directory)
+        super().__init__(hidden_sizes, Lambda, directory, activation=activation, weight_init=weight_init, seed=seed)
         self.mean: np.ndarray | None = None
         self.std: np.ndarray | None = None
         

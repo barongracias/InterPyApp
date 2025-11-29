@@ -39,12 +39,15 @@ def test_pipeline():
             directory=output_dir,
             hidden_sizes=[16, 8],
             Lambda=0.01,
-            epochs=1000,
+            epochs=200,
             learning_rate=0.01,
             train_val_split=0.8,
             beta1=0.9,
             beta2=0.999,
-            epsilon=1e-8 
+            epsilon=1e-8,
+            activation="relu",
+            batch_size=16,
+            seed=321,
         )
 
         train_loss, val_loss = trainer.train(train_pkl_path)

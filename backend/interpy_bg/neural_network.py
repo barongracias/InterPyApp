@@ -27,7 +27,15 @@ class NeuralNetwork():
         t (int): Adam timestep for bias correction.
     """
     
-    def __init__(self, hidden_sizes: list[int], Lambda: float, directory: str):
+    def __init__(
+        self,
+        hidden_sizes: list[int],
+        Lambda: float,
+        directory: str,
+        activation: str = "sigmoid",
+        weight_init: str = "auto",
+        seed: int | None = None
+    ):
         """
         Initialize the neural network with random weights and zero biases.
 
@@ -35,11 +43,21 @@ class NeuralNetwork():
             hidden_sizes (list[int]): List specifying number of neurons in each hidden layer.
             Lambda (float): L2 regularisation parameter.
             directory (str): Directory path to save output files.
+            activation (str): Activation for hidden layers ('sigmoid', 'tanh', 'relu', 'leakyrelu').
+            weight_init (str): Weight init strategy ('auto', 'he', 'xavier').
+            seed (int | None): Optional RNG seed for reproducibility.
         """
         
         self.hidden_sizes: list[int] = hidden_sizes    # e.g., [16, 32, 16]
         self.Lambda: float = Lambda
         self.directory: str = directory
+        self.activation_name: str = activation.lower()
+        self.weight_init: str = weight_init.lower()
+        self.seed: int | None = seed
+        if self.activation_name not in {"sigmoid", "tanh", "relu", "leakyrelu"}:
+            raise ValueError("activation must be one of: sigmoid, tanh, relu, leakyrelu")
+        if self.weight_init not in {"auto", "he", "xavier"}:
+            raise ValueError("weight_init must be 'auto', 'he', or 'xavier'")
 
         # fixed input/output size for 5D->1D interpolation
         self.input_size: int = 5
@@ -51,9 +69,22 @@ class NeuralNetwork():
         
         # initialise layer sizes
         self.layer_sizes: list[int] = [self.input_size] + self.hidden_sizes + [self.output_size]    # e.g., [5, 16, 32, 16, 1]
+
+        # rng for reproducibility
+        self.rng = np.random.default_rng(self.seed)
         
-        # initialise weights and biases with small random numbers (Gaussian)
-        self.weights: list[np.ndarray] = [np.random.randn(self.layer_sizes[i], self.layer_sizes[i+1]) * 0.01 for i in range(len(self.layer_sizes)-1)]
+        # initialise weights and biases with suitable scaling
+        self.weights: list[np.ndarray] = []
+        for i in range(len(self.layer_sizes) - 1):
+            fan_in = self.layer_sizes[i]
+            fan_out = self.layer_sizes[i+1]
+            init_type = self._resolve_init(fan_in, fan_out)
+            if init_type == "he":
+                std = np.sqrt(2.0 / fan_in)
+            else:  # xavier
+                std = np.sqrt(2.0 / (fan_in + fan_out))
+            W = self.rng.normal(0.0, std, size=(fan_in, fan_out))
+            self.weights.append(W)
         self.logger.debug(f"Initialised weights: {[w.shape for w in self.weights]}")
         
         self.biases: list[np.ndarray] = [np.zeros((1, self.layer_sizes[i+1])) for i in range(len(self.layer_sizes)-1)]
@@ -71,37 +102,44 @@ class NeuralNetwork():
         self.t: int = 0
         self.logger.debug("Initialised Adam states for weights and biases.")
 
+    def _resolve_init(self, fan_in: int, fan_out: int) -> str:
+        """
+        Decide which weight initialisation to use.
+        """
+        if self.weight_init == "auto":
+            return "he" if self.activation_name in {"relu", "leakyrelu"} else "xavier"
+        if self.weight_init not in {"he", "xavier"}:
+            raise ValueError("weight_init must be 'auto', 'he', or 'xavier'")
+        return self.weight_init
+
     def activation(self, z: np.ndarray) -> np.ndarray:
         """
-        Apply the sigmoid activation function element-wise to the input.
-        Numerically stable version to avoid overflow for large negative values.
-
-        Args:
-            z (np.ndarray): Input array of any shape.
-
-        Returns:
-            np.ndarray: Sigmoid activation applied element-wise to keep the same shape as z.
+        Apply the configured activation function element-wise.
         """
-        
-        return np.where(z >= 0,
-                        1 / (1 + np.exp(-z)),
-                        np.exp(z) / (1 + np.exp(z))
-                        )
+        if self.activation_name == "sigmoid":
+            return np.where(z >= 0, 1 / (1 + np.exp(-z)), np.exp(z) / (1 + np.exp(z)))
+        if self.activation_name == "tanh":
+            return np.tanh(z)
+        if self.activation_name == "relu":
+            return np.maximum(0, z)
+        if self.activation_name == "leakyrelu":
+            return np.where(z > 0, z, 0.01 * z)
+        raise ValueError(f"Unsupported activation: {self.activation_name}")
     
     def activation_deriv(self, z: np.ndarray) -> np.ndarray:
         """
-        Derivative of the sigmoid activation function applied element-wise.
-        The derivative is set as sigmoid(z) * (1 - sigmoid(z)).
-
-        Args:
-            z (np.ndarray): Input array of any shape (pre-activation values).
-
-        Returns:
-            np.ndarray: Element-wise derivative of the sigmoid, same shape as z.
+        Derivative of the configured activation function applied element-wise.
         """
-        
-        sigmoid = self.activation(z)
-        return sigmoid * (1 - sigmoid)
+        if self.activation_name == "sigmoid":
+            sig = self.activation(z)
+            return sig * (1 - sig)
+        if self.activation_name == "tanh":
+            return 1 - np.tanh(z) ** 2
+        if self.activation_name == "relu":
+            return (z > 0).astype(float)
+        if self.activation_name == "leakyrelu":
+            return np.where(z > 0, 1.0, 0.01)
+        raise ValueError(f"Unsupported activation: {self.activation_name}")
     
     def forward(self, X: np.ndarray) -> np.ndarray:
         """

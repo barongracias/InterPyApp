@@ -26,6 +26,8 @@ type TrainResult = {
   epochs_run?: number;
   baseline_rmse?: number;
   artifacts?: string[];
+  final_train_r2?: number;
+  final_val_r2?: number;
 };
 
 type Predictions = number[][] | null;
@@ -42,6 +44,13 @@ export default function Home() {
   const [epochs, setEpochs] = useState("500");
   const [learningRate, setLearningRate] = useState("0.01");
   const [trainValSplit, setTrainValSplit] = useState("0.8");
+  const [activation, setActivation] = useState("relu");
+  const [weightInit, setWeightInit] = useState("auto");
+  const [batchSize, setBatchSize] = useState("32");
+  const [gradClip, setGradClip] = useState("5");
+  const [seed, setSeed] = useState("42");
+  const [lrDecay, setLrDecay] = useState("0.98");
+  const [earlyStop, setEarlyStop] = useState("20");
   const [beta1, setBeta1] = useState("0.9");
   const [beta2, setBeta2] = useState("0.999");
   const [epsilon, setEpsilon] = useState("1e-8");
@@ -165,6 +174,11 @@ export default function Home() {
   };
 
   const hiddenSizesValid = hiddenSizes.split(",").map((s) => s.trim()).filter(Boolean).every((s) => /^\d+$/.test(s) && Number(s) > 0);
+  const isPositiveIntOrEmpty = (val: string) => val === "" || (Number.isInteger(Number(val)) && Number(val) > 0);
+  const activationValid = ["sigmoid", "tanh", "relu", "leakyrelu"].includes(activation.toLowerCase());
+  const weightInitValid = ["auto", "he", "xavier"].includes(weightInit.toLowerCase());
+  const lrDecayValid = lrDecay === "" || (Number(lrDecay) > 0 && Number(lrDecay) < 1);
+  const earlyStopValid = earlyStop === "" || (Number.isInteger(Number(earlyStop)) && Number(earlyStop) > 0);
   const hyperparamsValid =
     hiddenSizesValid &&
     isPositiveNumber(Lambda) &&
@@ -176,7 +190,14 @@ export default function Home() {
     Number(beta1) < 1 &&
     Number(beta2) > 0 &&
     Number(beta2) < 1 &&
-    isPositiveNumber(epsilon);
+    isPositiveNumber(epsilon) &&
+    activationValid &&
+    weightInitValid &&
+    isPositiveIntOrEmpty(batchSize) &&
+    isPositiveNumber(gradClip) &&
+    (seed === "" || Number.isInteger(Number(seed))) &&
+    lrDecayValid &&
+    earlyStopValid;
 
   const manualInputValid = testInput
     .split(",")
@@ -219,6 +240,13 @@ export default function Home() {
       setEpochs("500");
       setLearningRate("0.01");
       setTrainValSplit("0.8");
+      setActivation("relu");
+      setWeightInit("auto");
+      setBatchSize("32");
+      setGradClip("5");
+      setSeed("42");
+      setLrDecay("0.98");
+      setEarlyStop("20");
       setBeta1("0.9");
       setBeta2("0.999");
       setEpsilon("1e-8");
@@ -247,6 +275,13 @@ export default function Home() {
     formData.append("beta1", beta1);
     formData.append("beta2", beta2);
     formData.append("epsilon", epsilon);
+    formData.append("activation", activation);
+    formData.append("weight_init", weightInit);
+    formData.append("batch_size", batchSize);
+    formData.append("grad_clip", gradClip);
+    if (seed !== "") formData.append("seed", seed);
+    if (lrDecay !== "") formData.append("lr_decay", lrDecay);
+    if (earlyStop !== "") formData.append("early_stop_patience", earlyStop);
 
     const res = await fetch(`${backend}/train`, {
       method: "POST",
@@ -531,6 +566,52 @@ export default function Home() {
                   <p className="text-xs text-gray-500 mt-1">Regularization strength (default: 0.01)</p>
                   {!isPositiveNumber(Lambda) && <p className="text-xs text-red-600 mt-1">Must be a positive number.</p>}
                 </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Activation
+                    </label>
+                    <select
+                      value={activation}
+                      onChange={(e) => setActivation(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                    >
+                      <option value="relu">ReLU</option>
+                      <option value="leakyrelu">LeakyReLU</option>
+                      <option value="tanh">tanh</option>
+                      <option value="sigmoid">sigmoid</option>
+                    </select>
+                    {!activationValid && <p className="text-xs text-red-600 mt-1">Choose a valid activation.</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Weight Init
+                    </label>
+                    <select
+                      value={weightInit}
+                      onChange={(e) => setWeightInit(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                    >
+                      <option value="auto">auto</option>
+                      <option value="he">he</option>
+                      <option value="xavier">xavier</option>
+                    </select>
+                    {!weightInitValid && <p className="text-xs text-red-600 mt-1">Choose a valid init.</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Seed (optional)
+                    </label>
+                    <input
+                      type="number"
+                      value={seed}
+                      onChange={(e) => setSeed(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                      placeholder="e.g., 42"
+                    />
+                  </div>
+                </div>
               </div>
 
               <button
@@ -605,6 +686,68 @@ export default function Home() {
                   {!(Number(trainValSplit) > 0 && Number(trainValSplit) < 1) && (
                     <p className="text-xs text-red-600 mt-1">Use a value between 0 and 1 (e.g., 0.8).</p>
                   )}
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Batch Size
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={batchSize}
+                      onChange={(e) => setBatchSize(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                      placeholder="32"
+                    />
+                    {!isPositiveIntOrEmpty(batchSize) && <p className="text-xs text-red-600 mt-1">Must be a positive integer.</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Grad Clip
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      value={gradClip}
+                      onChange={(e) => setGradClip(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                      placeholder="5.0"
+                    />
+                    {!isPositiveNumber(gradClip) && <p className="text-xs text-red-600 mt-1">Must be positive.</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Learning Rate Decay (optional)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      max={1}
+                      value={lrDecay}
+                      onChange={(e) => setLrDecay(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                      placeholder="0.98"
+                    />
+                    {!lrDecayValid && <p className="text-xs text-red-600 mt-1">Use 0-1 (e.g., 0.98) or leave blank.</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Early Stop Patience
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={earlyStop}
+                      onChange={(e) => setEarlyStop(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                      placeholder="20"
+                    />
+                    {!earlyStopValid && <p className="text-xs text-red-600 mt-1">Must be a positive integer or blank.</p>}
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-gray-200">
@@ -755,6 +898,22 @@ export default function Home() {
                   <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-2xl border border-indigo-200">
                     <p className="text-sm font-semibold text-indigo-700 mb-1">Best epoch</p>
                     <p className="text-2xl font-bold text-indigo-900">{trainResult.best_epoch}</p>
+                  </div>
+                )}
+                {trainResult.final_train_r2 !== undefined && (
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-2xl border border-green-200">
+                    <p className="text-sm font-semibold text-green-700 mb-1">Train R²</p>
+                    <p className="text-2xl font-bold text-green-900">
+                      {trainResult.final_train_r2.toFixed(4)}
+                    </p>
+                  </div>
+                )}
+                {trainResult.final_val_r2 !== undefined && (
+                  <div className="bg-gradient-to-br from-rose-50 to-rose-100 p-4 rounded-2xl border border-rose-200">
+                    <p className="text-sm font-semibold text-rose-700 mb-1">Val R²</p>
+                    <p className="text-2xl font-bold text-rose-900">
+                      {trainResult.final_val_r2.toFixed(4)}
+                    </p>
                   </div>
                 )}
               </div>

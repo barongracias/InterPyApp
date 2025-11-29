@@ -42,7 +42,12 @@ class Trainer(NeuralNetwork):
                  beta2: float = 0.999,
                  epsilon: float = 1e-8,
                  early_stop_patience: int | None = None,
-                 lr_decay: float | None = None
+                 lr_decay: float | None = None,
+                 batch_size: int | None = None,
+                 grad_clip: float | None = None,
+                 activation: str = "sigmoid",
+                 weight_init: str = "auto",
+                 seed: int | None = None,
                  ):
         """
         Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
@@ -59,7 +64,7 @@ class Trainer(NeuralNetwork):
             epsilon (float): Small constant to avoid divide-by-zero in Adam.
         """
         
-        super().__init__(hidden_sizes, Lambda, directory)
+        super().__init__(hidden_sizes, Lambda, directory, activation=activation, weight_init=weight_init, seed=seed)
         self.epochs: int = epochs
         self.learning_rate: float = learning_rate
         self.train_val_split: float = train_val_split
@@ -67,10 +72,14 @@ class Trainer(NeuralNetwork):
         self.val_loss_history: list[float] = []
         self.early_stop_patience: int | None = early_stop_patience
         self.lr_decay: float | None = lr_decay
+        self.batch_size: int | None = batch_size
+        self.grad_clip: float | None = grad_clip
         self.best_val_rmse: float | None = None
         self.best_train_rmse: float | None = None
         self.best_epoch: int | None = None
         self.baseline_rmse: float | None = None
+        self.final_train_r2: float | None = None
+        self.final_val_r2: float | None = None
         
         # adam hyperparams
         self.beta1: float = float(beta1)
@@ -88,6 +97,10 @@ class Trainer(NeuralNetwork):
             raise ValueError("early_stop_patience must be positive or None")
         if self.lr_decay is not None and not (0 < self.lr_decay < 1):
             raise ValueError("lr_decay must be between 0 and 1 if provided")
+        if self.batch_size is not None and self.batch_size <= 0:
+            raise ValueError("batch_size must be positive or None")
+        if self.grad_clip is not None and self.grad_clip <= 0:
+            raise ValueError("grad_clip must be positive if provided")
         self.logger.info(f"Initialised Adam hyperparams: beta1: {self.beta1}, beta2: {self.beta2}, epsilon: {self.epsilon}")
         
         # initialise bias moments for Adam (weights' m and v are initialised in NeuralNetwork)
@@ -321,6 +334,13 @@ class Trainer(NeuralNetwork):
             "epochs_configured": self.epochs,
             "lr_decay": self.lr_decay,
             "early_stop_patience": self.early_stop_patience,
+            "activation": getattr(self, "activation_name", "sigmoid"),
+            "weight_init": getattr(self, "weight_init", "auto"),
+            "batch_size": self.batch_size,
+            "grad_clip": self.grad_clip,
+            "seed": self.seed,
+            "final_train_r2": self.final_train_r2,
+            "final_val_r2": self.final_val_r2,
         }
         with open(path, "w", encoding="utf-8") as f:
             json.dump(metadata, f)
@@ -341,6 +361,15 @@ class Trainer(NeuralNetwork):
         
         return np.sqrt(np.mean((y_true - y_pred)**2))
 
+    @staticmethod
+    def calc_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        """
+        Calculate coefficient of determination (R^2) for regression.
+        """
+        ss_res = np.sum((y_true - y_pred) ** 2)
+        ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+        return float(1 - ss_res / ss_tot) if ss_tot != 0 else float("nan")
+
     @timer
     def train(self, pkl_path: str) -> tuple[list[float], list[float]]:
         """
@@ -358,6 +387,7 @@ class Trainer(NeuralNetwork):
             train_frac=self.train_val_split,
             val_frac=1 - self.train_val_split,
             test_frac=0.0,
+            random_state=self.seed,
         )
         X_train_norm = splits["X_train"]
         y_train = splits["y_train"]
@@ -398,46 +428,61 @@ class Trainer(NeuralNetwork):
         # logging checkpoints -> print every 20 times
         log_every = max(1, self.epochs//20)
         
-        # training loop
+        # training loop with mini-batches
+        N_train = X_train_norm.shape[0]
+        batch_size = self.batch_size or N_train
         for epoch in range(self.epochs):
             self.logger.debug(f"Epoch {epoch+1}/{self.epochs} starting")
             lr = base_lr * (self.lr_decay ** epoch) if self.lr_decay else base_lr
 
-            # timestep for Adam
-            self.t += 1
-            t = self.t
+            # shuffle each epoch for mini-batching
+            idx = self.rng.permutation(N_train)
+            X_train_shuffled = X_train_norm[idx]
+            y_train_shuffled = y_train[idx]
 
-            # apply forward pass
-            y_pred_train = self.forward(X_train_norm)
+            for start in range(0, N_train, batch_size):
+                end = start + batch_size
+                X_batch = X_train_shuffled[start:end]
+                y_batch = y_train_shuffled[start:end]
 
-            # apply backprop to return gradients
-            dW, db = self.backprop(X_train_norm, y_train, y_pred_train)
+                self.t += 1
+                t = self.t
 
-            # Adam update
-            for i in range(len(self.weights)):
-                # update first moment estimates
-                self.m[i] = beta1 * self.m[i] + (1 - beta1) * dW[i]
-                mb[i] = beta1 * mb[i] + (1 - beta1) * db[i]
+                # forward/backward on batch
+                y_pred_batch = self.forward(X_batch)
+                dW, db = self.backprop(X_batch, y_batch, y_pred_batch)
 
-                # update second moment estimates
-                self.v[i] = beta2 * self.v[i] + (1 - beta2) * (dW[i] ** 2)
-                vb[i] = beta2 * vb[i] + (1 - beta2) * (db[i] ** 2)
+                # optional grad clipping
+                if self.grad_clip is not None:
+                    for i in range(len(dW)):
+                        norm_w = np.linalg.norm(dW[i])
+                        if norm_w > self.grad_clip:
+                            dW[i] *= self.grad_clip / (norm_w + 1e-8)
+                        norm_b = np.linalg.norm(db[i])
+                        if norm_b > self.grad_clip:
+                            db[i] *= self.grad_clip / (norm_b + 1e-8)
 
-                # bias-corrected estimates
-                m_hat = self.m[i] / (1 - beta1 ** t)
-                v_hat = self.v[i] / (1 - beta2 ** t)
-                mb_hat = mb[i] / (1 - beta1 ** t)
-                vb_hat = vb[i] / (1 - beta2 ** t)
+                # Adam update
+                for i in range(len(self.weights)):
+                    self.m[i] = beta1 * self.m[i] + (1 - beta1) * dW[i]
+                    mb[i] = beta1 * mb[i] + (1 - beta1) * db[i]
 
-                # update parameters
-                self.weights[i] -= lr * m_hat / (np.sqrt(v_hat) + eps)
-                self.biases[i] -= lr * mb_hat / (np.sqrt(vb_hat) + eps)
+                    self.v[i] = beta2 * self.v[i] + (1 - beta2) * (dW[i] ** 2)
+                    vb[i] = beta2 * vb[i] + (1 - beta2) * (db[i] ** 2)
 
-            # validation predictions
+                    m_hat = self.m[i] / (1 - beta1 ** t)
+                    v_hat = self.v[i] / (1 - beta2 ** t)
+                    mb_hat = mb[i] / (1 - beta1 ** t)
+                    vb_hat = vb[i] / (1 - beta2 ** t)
+
+                    self.weights[i] -= lr * m_hat / (np.sqrt(v_hat) + eps)
+                    self.biases[i] -= lr * mb_hat / (np.sqrt(vb_hat) + eps)
+
+            # evaluate full train/val after epoch
+            y_pred_train_full = self.forward(X_train_norm)
             y_pred_val = self.forward(X_val_norm)
 
-            # RMSE
-            train_rmse = self.calc_rmse(y_train, y_pred_train)
+            train_rmse = self.calc_rmse(y_train, y_pred_train_full)
             val_rmse = self.calc_rmse(y_val, y_pred_val)
 
             train_loss_hist.append(train_rmse)
@@ -452,7 +497,6 @@ class Trainer(NeuralNetwork):
             else:
                 patience_counter += 1
 
-            # periodic logging
             if (epoch + 1) % log_every == 0 or epoch == 0:
                 self.logger.info(
                     f"Epoch {epoch+1}/{self.epochs}: "
@@ -468,10 +512,16 @@ class Trainer(NeuralNetwork):
             self.biases = best_biases
             self.logger.info(f"Restored best weights from epoch {best_epoch} with Val RMSE={best_val:.4f}")
             final_epoch = best_epoch
+            y_pred_train_plot = self.forward(X_train_norm)
         else:
             final_epoch = len(train_loss_hist)
             best_val = val_loss_hist[-1] if val_loss_hist else None
             best_train = train_loss_hist[-1] if train_loss_hist else None
+            y_pred_train_plot = y_pred_train_full
+        # compute final R^2 using restored/best weights
+        y_pred_val_plot = self.forward(X_val_norm)
+        self.final_train_r2 = self.calc_r2(y_train, y_pred_train_plot)
+        self.final_val_r2 = self.calc_r2(y_val, y_pred_val_plot)
 
         # save loss histories
         self.train_loss_history = train_loss_hist
@@ -487,7 +537,7 @@ class Trainer(NeuralNetwork):
         
         # save RMSE vs Epoch plot and y_true vs y_preds plot for final epoch
         plot_loss(train_loss_hist, val_loss_hist, "rmse_vs_epochs.png", self.directory)
-        plot_predictions(y_train, y_pred_train, "ytrue_vs_ypred.png", self.directory)
+        plot_predictions(y_train, y_pred_train_plot, "ytrue_vs_ypred.png", self.directory)
         
         self.logger.debug("Training complete")
         return train_loss_hist, val_loss_hist

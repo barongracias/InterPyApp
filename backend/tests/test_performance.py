@@ -7,9 +7,9 @@ import numpy as np
 # Ensure backend modules are importable
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from interpy_bg.synthetic import synthetic_5d, synthetic_5d_pickle  # noqa: E402
-from interpy_bg.trainer import Trainer  # noqa: E402
-from interpy_bg.tester import Tester  # noqa: E402
+from interpy_bg.synthetic import synthetic_5d, synthetic_5d_pickle
+from interpy_bg.trainer import Trainer
+from interpy_bg.tester import Tester
 
 
 def mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -113,7 +113,6 @@ def benchmark_sizes(sizes=(1000, 5000, 10000), test_samples=500, seed=42, epochs
             f"{r['mse']:8.6f} | "
             f"{r['r2']:6.4f}"
         )
-
 
 if __name__ == "__main__":
     benchmark_sizes()

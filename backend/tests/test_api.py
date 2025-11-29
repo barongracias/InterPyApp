@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 # Ensure backend modules can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from main import app, OUTPUT_DIR  # noqa: E402
+from main import app, OUTPUT_DIR
 
 
 def _make_dataset_file(tmp_path):

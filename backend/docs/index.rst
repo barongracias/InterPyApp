@@ -11,13 +11,7 @@ Getting Started
 Installation
 ------------
 
-You can install the package via PyPI (once published):
-
-.. code-block:: bash
-
-    pip install interpy-bg
-
-Or install directly from the repository:
+Install directly from the repository:
 
 .. code-block:: bash
 
@@ -38,11 +32,11 @@ Usage
     X_train = np.random.rand(100, 5)
     y_train = np.random.rand(100, 1)
 
-    trainer = Trainer(hidden_sizes=[10, 5], Lambda=0.01, epochs=500, learning_rate=0.01, train_val_split=0.8)
-    train_loss, val_loss = trainer.train(X_train, y_train)
+    trainer = Trainer(directory=\"outputs\", hidden_sizes=[10, 5], Lambda=0.01, epochs=500, learning_rate=0.01, train_val_split=0.8)
+    train_loss, val_loss = trainer.train(\"path/to/train.pkl\")  # .pkl file with dict {\"X\": X_train, \"y\": y_train}
 
     # Example: testing
-    tester = Tester(hidden_sizes=[10, 5], Lambda=0.01)
+    tester = Tester(hidden_sizes=[10, 5], Lambda=0.01, directory=\"outputs\")
     y_pred = tester.predict(X_train)
 
 Contents

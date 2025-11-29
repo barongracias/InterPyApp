@@ -42,5 +42,5 @@ html_context = {
     "github_user": "barongracias",
     "github_repo": "InterPyApp",
     "github_version": "main",
-    "conf_py_path": "/backend/interpy_bg/docs/",  # Path to docs folder in repo
+    "conf_py_path": "/backend/docs/",  # Path to docs folder in repo
 }

@@ -6,6 +6,7 @@ backend/outputs/
 backend/pydoc-markdown.yml
 backend/docs/_build/
 backend/docs/_autosummary/
+.pytest_cache/
 
 # Sphinx build artifacts
 /backend/docs/_build/

@@ -158,8 +158,9 @@ class NeuralNetwork():
         # mean squared error
         mse = 0.5 * np.mean((y - y_hat)**2)
         
-        # L2 regularisation term
-        reg_term = 0.5 * self.Lambda * sum(np.sum(W**2) for W in self.weights)
+        # L2 regularisation term scaled by dataset size to match mean-based loss
+        N = X.shape[0]
+        reg_term = 0.5 * (self.Lambda / N) * sum(np.sum(W**2) for W in self.weights)
         
         # total cost
         J = mse + reg_term
@@ -194,7 +195,7 @@ class NeuralNetwork():
         N = X.shape[0]
         for i in reversed(range(len(self.weights))):
             # grad for weights with reg
-            dW[i] = self.z_hat_list[i].T @ (delta/N) + self.Lambda * self.weights[i]
+            dW[i] = self.z_hat_list[i].T @ (delta/N) + (self.Lambda / N) * self.weights[i]
             
             # grad for biases
             db[i] = np.mean(delta, axis=0, keepdims=True)

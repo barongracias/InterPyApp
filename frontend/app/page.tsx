@@ -1,7 +1,34 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
 import { Upload, Settings, Zap, BarChart3, Sparkles, CheckCircle, Loader } from "lucide-react";
+
+type DatasetStats = {
+  rows: number;
+  features: number;
+  x_min: number[];
+  x_max: number[];
+  y_min: number;
+  y_max: number;
+};
+
+type TrainResult = {
+  message: string;
+  train_loss_start: number;
+  train_loss_end: number;
+  val_loss_start: number;
+  val_loss_end: number;
+  plots: string[];
+  best_val_rmse?: number;
+  best_train_rmse?: number;
+  best_epoch?: number;
+  epochs_run?: number;
+  baseline_rmse?: number;
+  artifacts?: string[];
+};
+
+type Predictions = number[][] | null;
 
 export default function Home() {
   const [step, setStep] = useState(1);
@@ -19,16 +46,18 @@ export default function Home() {
   const [beta2, setBeta2] = useState("0.999");
   const [epsilon, setEpsilon] = useState("1e-8");
 
-  const [trainResult, setTrainResult] = useState<any>(null);
+  const [trainResult, setTrainResult] = useState<TrainResult | null>(null);
   const [trainLoading, setTrainLoading] = useState(false);
   const [testInput, setTestInput] = useState("0.5,0.5,0.5,0.5,0.5");
   const [testFile, setTestFile] = useState<File | null>(null);
   const [testFileUploading, setTestFileUploading] = useState(false);
   const [testFileReady, setTestFileReady] = useState(false);
   const [testMode, setTestMode] = useState<"values" | "file">("values");
-  const [predictions, setPredictions] = useState<any>(null);
+  const [predictions, setPredictions] = useState<Predictions>(null);
   const [healthStatus, setHealthStatus] = useState<"checking" | "ok" | "error">("checking");
-  const [datasetStats, setDatasetStats] = useState<any>(null);
+  const [datasetStats, setDatasetStats] = useState<DatasetStats | null>(null);
+  const [uploadComplete, setUploadComplete] = useState(false);
+  const [uploadHistory, setUploadHistory] = useState<string[]>([]);
 
   const backend = "http://localhost:8000";
   const backendAvailable = healthStatus === "ok";
@@ -38,6 +67,8 @@ export default function Home() {
     setFile(selectedFile);
     if (selectedFile) {
       setUploadMessage("");
+      setDatasetStats(null);
+      setUploadComplete(false);
     }
   };
 
@@ -67,11 +98,9 @@ export default function Home() {
         setUploadMessage(`✅ Uploaded: ${data.path || file.name}`);
         setDatasetStats(data.stats || null);
         setFileName(file.name);
-        console.log("Upload successful, proceeding to step 3");
-        setTimeout(() => {
-          console.log("Moving to step 3");
-          setStep(3);
-        }, 1000);
+        setUploadComplete(true);
+        setUploadHistory((prev) => [file.name, ...prev].slice(0, 3));
+        console.log("Upload successful, dataset stats ready");
       } else {
         console.error("Upload failed:", data);
         alert(data.error || "Upload failed");
@@ -130,6 +159,37 @@ export default function Home() {
     checkHealth();
   }, []);
 
+  const isPositiveNumber = (val: string) => {
+    const num = Number(val);
+    return Number.isFinite(num) && num > 0;
+  };
+
+  const hiddenSizesValid = hiddenSizes.split(",").map((s) => s.trim()).filter(Boolean).every((s) => /^\d+$/.test(s) && Number(s) > 0);
+  const hyperparamsValid =
+    hiddenSizesValid &&
+    isPositiveNumber(Lambda) &&
+    Number(trainValSplit) > 0 &&
+    Number(trainValSplit) < 1 &&
+    Number(epochs) > 0 &&
+    isPositiveNumber(learningRate) &&
+    Number(beta1) > 0 &&
+    Number(beta1) < 1 &&
+    Number(beta2) > 0 &&
+    Number(beta2) < 1 &&
+    isPositiveNumber(epsilon);
+
+  const manualInputValid = testInput
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean).length === 5 &&
+    testInput
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .every((n) => Number.isFinite(n));
+
+  const formatNumber = (val: number) => Number(val).toFixed(4);
+  const formatArray = (vals: number[]) => vals.map((v) => formatNumber(v)).join(", ");
+
   const handleReset = async () => {
     try {
       const res = await fetch(`${backend}/reset`, { method: "POST" });
@@ -162,6 +222,8 @@ export default function Home() {
       setBeta1("0.9");
       setBeta2("0.999");
       setEpsilon("1e-8");
+      setUploadComplete(false);
+      setUploadHistory([]);
     } catch (error) {
       console.error("Reset error:", error);
       alert("Failed to reset the app. Is the backend running?");
@@ -169,6 +231,11 @@ export default function Home() {
   };
 
   const handleTrain = async () => {
+    if (!uploadComplete || !fileName) {
+      alert("Upload a dataset before training.");
+      return;
+    }
+    if (!hyperparamsValid) return;
     setTrainLoading(true);
     const formData = new FormData();
     formData.append("pkl_filename", fileName);
@@ -198,8 +265,6 @@ export default function Home() {
 
   const handlePredict = async () => {
     const formData = new FormData();
-    formData.append("hidden_sizes", hiddenSizes);
-    formData.append("Lambda", Lambda);
 
     if (testMode === "file") {
       if (!testFile) {
@@ -208,6 +273,10 @@ export default function Home() {
       }
       formData.append("input_file", testFile);
     } else {
+      if (!manualInputValid) {
+        alert("Enter exactly 5 numeric values separated by commas.");
+        return;
+      }
       formData.append("input_values", testInput);
     }
 
@@ -318,53 +387,105 @@ export default function Home() {
                 </div>
                 <h2 className="text-3xl font-bold text-gray-800">Upload Training Data</h2>
               </div>
-              
-              <div className="border-2 border-dashed border-indigo-300 rounded-2xl p-8 mb-6 bg-indigo-50/50 hover:border-indigo-500 transition-colors duration-200">
-                <input
-                  type="file"
-                  accept=".pkl"
-                  onChange={handleFileSelect}
-                  className="w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-indigo-600 file:to-purple-600 file:text-white file:font-semibold file:cursor-pointer hover:file:shadow-lg file:transition-all"
-                  disabled={isUploading || !backendAvailable}
-                />
-                {file && !isUploading && (
-                  <div className="mt-4 flex items-center text-indigo-700 font-medium">
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    <span>📄 Selected: {file.name}</span>
-                  </div>
-                )}
-                {isUploading && (
-                  <div className="mt-4 flex items-center text-indigo-600 font-medium">
-                    <Loader className="w-5 h-5 mr-2 animate-spin" />
-                    <span>Uploading file...</span>
-                  </div>
-                )}
-              </div>
 
-              <button
-                onClick={handleUpload}
-                disabled={isUploading || !file || !backendAvailable}
-                className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                {isUploading ? "Uploading..." : "Upload Dataset"}
-              </button>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <div className="border-2 border-dashed border-indigo-300 rounded-2xl p-8 mb-6 bg-indigo-50/50 hover:border-indigo-500 transition-colors duration-200">
+                    <input
+                      type="file"
+                      accept=".pkl"
+                      onChange={handleFileSelect}
+                      className="w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-indigo-600 file:to-purple-600 file:text-white file:font-semibold file:cursor-pointer hover:file:shadow-lg file:transition-all"
+                      disabled={isUploading || !backendAvailable}
+                    />
+                    {file && !isUploading && (
+                      <div className="mt-4 flex items-center text-indigo-700 font-medium">
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        <span>📄 Selected: {file.name}</span>
+                      </div>
+                    )}
+                    {isUploading && (
+                      <div className="mt-4 flex items-center text-indigo-600 font-medium">
+                        <Loader className="w-5 h-5 mr-2 animate-spin" />
+                        <span>Uploading file...</span>
+                      </div>
+                    )}
+                  </div>
 
-              {uploadMessage && (
-                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl space-y-3">
-                  <p className="text-green-700 font-medium">{uploadMessage}</p>
-                  {datasetStats && (
-                    <div className="text-sm text-gray-700">
-                      <p className="font-semibold mb-1">Dataset preview</p>
-                      <p>Rows: {datasetStats.rows}</p>
-                      <p>Features: {datasetStats.features}</p>
-                      <p>X min: {datasetStats.x_min.join(", ")}</p>
-                      <p>X max: {datasetStats.x_max.join(", ")}</p>
-                      <p>y min: {datasetStats.y_min}</p>
-                      <p>y max: {datasetStats.y_max}</p>
+                  <button
+                    onClick={handleUpload}
+                    disabled={isUploading || !file || !backendAvailable}
+                    className="w-full px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    {isUploading ? "Uploading..." : "Upload Dataset"}
+                  </button>
+
+                  {uploadMessage && (
+                    <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl space-y-3">
+                      <p className="text-green-700 font-medium">{uploadMessage}</p>
+                    </div>
+                  )}
+
+                  {uploadComplete && (
+                    <button
+                      onClick={() => setStep(3)}
+                      className="w-full mt-6 px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg"
+                    >
+                      Continue to Configure Network
+                    </button>
+                  )}
+                </div>
+
+                <div className="md:col-span-1 md:sticky md:top-6 space-y-4">
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-indigo-50 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Dataset preview</h3>
+                    {datasetStats ? (
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <div className="flex justify-between font-semibold text-gray-900">
+                        <span>Rows</span><span>{datasetStats.rows}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-gray-900">Features</span><span>{datasetStats.features}</span>
+                      </div>
+                      <div className="mt-2">
+                        <p className="font-semibold text-gray-900">X min</p>
+                        <p className="font-mono text-xs text-gray-700">{formatArray(datasetStats.x_min)}</p>
+                      </div>
+                      <div className="mt-2">
+                        <p className="font-semibold text-gray-900">X max</p>
+                        <p className="font-mono text-xs text-gray-700">{formatArray(datasetStats.x_max)}</p>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="font-semibold text-gray-900">y min</p>
+                          <p className="font-mono text-xs text-gray-700">{formatNumber(datasetStats.y_min)}</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">y max</p>
+                          <p className="font-mono text-xs text-gray-700">{formatNumber(datasetStats.y_max)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">Select and upload a .pkl file to preview stats.</p>
+                    )}
+                  </div>
+
+                  {uploadHistory.length > 0 && (
+                    <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">Recent uploads</h4>
+                      <ul className="space-y-1 text-sm text-gray-700">
+                        {uploadHistory.map((name) => (
+                          <li key={name} className="flex items-center">
+                            <span className="mr-2 text-indigo-500">•</span>
+                            <span className="truncate">{name}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}
@@ -391,7 +512,8 @@ export default function Home() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                     placeholder="e.g., 16,8"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Comma-separated layer sizes (default: 16,8)</p>
+                  <p className="text-xs text-gray-500 mt-1">Comma-separated positive integers (default: 16,8)</p>
+                  {!hiddenSizesValid && <p className="text-xs text-red-600 mt-1">Enter at least one integer layer size.</p>}
                 </div>
 
                 <div>
@@ -407,6 +529,7 @@ export default function Home() {
                     placeholder="e.g., 0.01"
                   />
                   <p className="text-xs text-gray-500 mt-1">Regularization strength (default: 0.01)</p>
+                  {!isPositiveNumber(Lambda) && <p className="text-xs text-red-600 mt-1">Must be a positive number.</p>}
                 </div>
               </div>
 
@@ -437,12 +560,14 @@ export default function Home() {
                   </label>
                   <input
                     type="number"
+                    min={1}
                     value={epochs}
                     onChange={(e) => setEpochs(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                     placeholder="500"
                   />
                   <p className="text-xs text-gray-500 mt-1">Number of training iterations (default: 500)</p>
+                  {Number(epochs) <= 0 && <p className="text-xs text-red-600 mt-1">Enter a positive integer.</p>}
                 </div>
 
                 <div>
@@ -452,12 +577,14 @@ export default function Home() {
                   <input
                     type="number"
                     step="0.001"
+                    min={0}
                     value={learningRate}
                     onChange={(e) => setLearningRate(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                     placeholder="0.01"
                   />
                   <p className="text-xs text-gray-500 mt-1">Step size for gradient descent (default: 0.01)</p>
+                  {!isPositiveNumber(learningRate) && <p className="text-xs text-red-600 mt-1">Must be positive.</p>}
                 </div>
 
                 <div>
@@ -467,12 +594,17 @@ export default function Home() {
                   <input
                     type="number"
                     step="0.1"
+                    min={0.1}
+                    max={0.9}
                     value={trainValSplit}
                     onChange={(e) => setTrainValSplit(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                     placeholder="0.8"
                   />
                   <p className="text-xs text-gray-500 mt-1">Fraction for training vs validation (default: 0.8)</p>
+                  {!(Number(trainValSplit) > 0 && Number(trainValSplit) < 1) && (
+                    <p className="text-xs text-red-600 mt-1">Use a value between 0 and 1 (e.g., 0.8).</p>
+                  )}
                 </div>
 
                 <div className="pt-4 border-t border-gray-200">
@@ -486,12 +618,15 @@ export default function Home() {
                       <input
                         type="number"
                         step="0.01"
+                        min={0}
+                        max={1}
                         value={beta1}
                         onChange={(e) => setBeta1(e.target.value)}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                         placeholder="0.9"
                       />
                       <p className="text-xs text-gray-500 mt-1">Exponential decay rate for first moment (default: 0.9)</p>
+                      {!(Number(beta1) > 0 && Number(beta1) < 1) && <p className="text-xs text-red-600 mt-1">Keep Beta1 between 0 and 1.</p>}
                     </div>
 
                     <div>
@@ -501,12 +636,15 @@ export default function Home() {
                       <input
                         type="number"
                         step="0.001"
+                        min={0}
+                        max={1}
                         value={beta2}
                         onChange={(e) => setBeta2(e.target.value)}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
                         placeholder="0.999"
                       />
                       <p className="text-xs text-gray-500 mt-1">Exponential decay rate for second moment (default: 0.999)</p>
+                      {!(Number(beta2) > 0 && Number(beta2) < 1) && <p className="text-xs text-red-600 mt-1">Keep Beta2 between 0 and 1.</p>}
                     </div>
 
                     <div>
@@ -521,6 +659,7 @@ export default function Home() {
                         placeholder="1e-8"
                       />
                       <p className="text-xs text-gray-500 mt-1">Small constant for numerical stability (default: 1e-8)</p>
+                      {!isPositiveNumber(epsilon) && <p className="text-xs text-red-600 mt-1">Must be positive.</p>}
                     </div>
                   </div>
                 </div>
@@ -528,7 +667,7 @@ export default function Home() {
 
               <button
                 onClick={handleTrain}
-                disabled={trainLoading || !backendAvailable}
+                disabled={trainLoading || !backendAvailable || !uploadComplete || !hyperparamsValid}
                 className="w-full mt-8 px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {trainLoading ? (
@@ -543,6 +682,21 @@ export default function Home() {
                   "Start Training"
                 )}
               </button>
+
+              {!uploadComplete && (
+                <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl">
+                  Upload a dataset first to enable training.
+                </p>
+              )}
+
+              {trainLoading && (
+                <div className="mt-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+                  <p className="text-indigo-700 font-medium">Training in progress ({epochs} epochs)...</p>
+                  <div className="mt-2 h-2 rounded-full bg-indigo-100 overflow-hidden">
+                    <div className="h-full w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 animate-pulse" />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -563,13 +717,46 @@ export default function Home() {
                   <p className="text-3xl font-bold text-blue-900">
                     {trainResult.train_loss_end.toFixed(4)}
                   </p>
+                  {trainResult.best_train_rmse !== undefined && trainResult.best_epoch && (
+                    <p className="text-xs text-blue-700 mt-1">
+                      Best: {trainResult.best_train_rmse.toFixed(4)} (epoch {trainResult.best_epoch})
+                    </p>
+                  )}
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-2xl border border-purple-200">
                   <p className="text-sm font-semibold text-purple-700 mb-1">Validation RMSE</p>
                   <p className="text-3xl font-bold text-purple-900">
                     {trainResult.val_loss_end.toFixed(4)}
                   </p>
+                  {trainResult.best_val_rmse !== undefined && trainResult.best_epoch && (
+                    <p className="text-xs text-purple-700 mt-1">
+                      Best: {trainResult.best_val_rmse.toFixed(4)} (epoch {trainResult.best_epoch})
+                    </p>
+                  )}
                 </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-4 mb-8">
+                {trainResult.baseline_rmse !== undefined && (
+                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-2xl border border-amber-200">
+                    <p className="text-sm font-semibold text-amber-700 mb-1">Baseline (mean) RMSE</p>
+                    <p className="text-2xl font-bold text-amber-900">
+                      {trainResult.baseline_rmse.toFixed(4)}
+                    </p>
+                  </div>
+                )}
+                {trainResult.epochs_run !== undefined && (
+                  <div className="bg-gradient-to-br from-teal-50 to-teal-100 p-4 rounded-2xl border border-teal-200">
+                    <p className="text-sm font-semibold text-teal-700 mb-1">Epochs executed</p>
+                    <p className="text-2xl font-bold text-teal-900">{trainResult.epochs_run}</p>
+                  </div>
+                )}
+                {trainResult.best_epoch !== undefined && (
+                  <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-2xl border border-indigo-200">
+                    <p className="text-sm font-semibold text-indigo-700 mb-1">Best epoch</p>
+                    <p className="text-2xl font-bold text-indigo-900">{trainResult.best_epoch}</p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-6">
@@ -583,6 +770,23 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+
+              {trainResult.artifacts && (
+                <div className="mt-8">
+                  <p className="text-sm font-semibold text-gray-800 mb-2">Artifacts</p>
+                  <div className="grid md:grid-cols-3 gap-3">
+                    {trainResult.artifacts.map((artifact) => (
+                      <a
+                        key={artifact}
+                        href={`${backend}/artifacts/${artifact}`}
+                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 hover:bg-gray-100 transition"
+                      >
+                        {artifact}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-3xl shadow-2xl p-10 border border-gray-100">
@@ -633,6 +837,12 @@ export default function Home() {
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none font-mono text-gray-900"
                       placeholder="0.5,0.5,0.5,0.5,0.5"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Provide 5 numbers between 0 and 1 separated by commas, e.g. <span className="font-mono">0.2,0.4,0.6,0.3,0.5</span>.
+                    </p>
+                    {!manualInputValid && (
+                      <p className="text-xs text-red-600 mt-1">Expecting exactly 5 numeric values.</p>
+                    )}
                   </>
                 ) : (
                   <>
@@ -665,7 +875,11 @@ export default function Home() {
 
                 <button
                   onClick={handlePredict}
-                  disabled={!backendAvailable || (testMode === "file" && (!testFile || testFileUploading))}
+                  disabled={
+                    !backendAvailable ||
+                    (testMode === "file" && (!testFile || testFileUploading)) ||
+                    (testMode === "values" && !manualInputValid)
+                  }
                   className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   Generate Prediction
@@ -674,9 +888,20 @@ export default function Home() {
                 {predictions && (
                   <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl">
                     <p className="text-sm font-semibold text-purple-700 mb-2">Predicted Output</p>
-                    <p className="text-2xl font-bold text-purple-900 font-mono break-all">
-                      {JSON.stringify(predictions)}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <p className="text-2xl font-bold text-purple-900 font-mono break-all">
+                        {Number(predictions[0]?.[0] ?? 0).toFixed(4)}
+                      </p>
+                      <button
+                        onClick={() => {
+                          const val = predictions[0]?.[0];
+                          if (val !== undefined) navigator.clipboard.writeText(String(val));
+                        }}
+                        className="px-3 py-1 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                      >
+                        Copy
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

@@ -40,7 +40,9 @@ class Trainer(NeuralNetwork):
                  train_val_split: float = 0.8,
                  beta1: float = 0.9,
                  beta2: float = 0.999,
-                 epsilon: float = 1e-8
+                 epsilon: float = 1e-8,
+                 early_stop_patience: int | None = None,
+                 lr_decay: float | None = None
                  ):
         """
         Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
@@ -63,6 +65,12 @@ class Trainer(NeuralNetwork):
         self.train_val_split: float = train_val_split
         self.train_loss_history: list[float] = []
         self.val_loss_history: list[float] = []
+        self.early_stop_patience: int | None = early_stop_patience
+        self.lr_decay: float | None = lr_decay
+        self.best_val_rmse: float | None = None
+        self.best_train_rmse: float | None = None
+        self.best_epoch: int | None = None
+        self.baseline_rmse: float | None = None
         
         # adam hyperparams
         self.beta1: float = float(beta1)
@@ -76,6 +84,10 @@ class Trainer(NeuralNetwork):
             raise ValueError("beta2 must be between 0 and 1")
         if self.epsilon <= 0:
             raise ValueError("epsilon must be > 0")
+        if self.early_stop_patience is not None and self.early_stop_patience <= 0:
+            raise ValueError("early_stop_patience must be positive or None")
+        if self.lr_decay is not None and not (0 < self.lr_decay < 1):
+            raise ValueError("lr_decay must be between 0 and 1 if provided")
         self.logger.info(f"Initialised Adam hyperparams: beta1: {self.beta1}, beta2: {self.beta2}, epsilon: {self.epsilon}")
         
         # initialise bias moments for Adam (weights' m and v are initialised in NeuralNetwork)
@@ -302,6 +314,13 @@ class Trainer(NeuralNetwork):
         metadata = {
             "hidden_sizes": self.hidden_sizes,
             "Lambda": self.Lambda,
+            "best_val_rmse": self.best_val_rmse,
+            "best_train_rmse": self.best_train_rmse,
+            "best_epoch": self.best_epoch,
+            "baseline_rmse": self.baseline_rmse,
+            "epochs_configured": self.epochs,
+            "lr_decay": self.lr_decay,
+            "early_stop_patience": self.early_stop_patience,
         }
         with open(path, "w", encoding="utf-8") as f:
             json.dump(metadata, f)
@@ -348,6 +367,10 @@ class Trainer(NeuralNetwork):
         # cache norm stats for saving/predict
         self.mean = splits["mean"]
         self.std = splits["std"]
+        # baseline: predict train mean
+        baseline_pred = np.full_like(y_train, y_train.mean())
+        self.baseline_rmse = float(self.calc_rmse(y_train, baseline_pred))
+        self.logger.info(f"Baseline (mean) train RMSE: {self.baseline_rmse:.4f}")
 
         self.logger.info(f"Loaded training data: {y_train.shape[0] + y_val.shape[0]} samples")
         self.logger.info(f"Training samples: {len(X_train_norm)}, Validation samples: {len(X_val_norm)}")
@@ -360,11 +383,17 @@ class Trainer(NeuralNetwork):
         beta1 = self.beta1
         beta2 = self.beta2
         eps = self.epsilon
-        lr = self.learning_rate
+        base_lr = self.learning_rate
         
         # initialise history arrays
         train_loss_hist = []
         val_loss_hist = []
+        best_weights = None
+        best_biases = None
+        best_epoch = None
+        best_val = np.inf
+        best_train = None
+        patience_counter = 0
         
         # logging checkpoints -> print every 20 times
         log_every = max(1, self.epochs//20)
@@ -372,6 +401,7 @@ class Trainer(NeuralNetwork):
         # training loop
         for epoch in range(self.epochs):
             self.logger.debug(f"Epoch {epoch+1}/{self.epochs} starting")
+            lr = base_lr * (self.lr_decay ** epoch) if self.lr_decay else base_lr
 
             # timestep for Adam
             self.t += 1
@@ -412,6 +442,15 @@ class Trainer(NeuralNetwork):
 
             train_loss_hist.append(train_rmse)
             val_loss_hist.append(val_rmse)
+            if val_rmse < best_val:
+                best_val = val_rmse
+                best_train = train_rmse
+                best_epoch = epoch + 1
+                best_weights = [w.copy() for w in self.weights]
+                best_biases = [b.copy() for b in self.biases]
+                patience_counter = 0
+            else:
+                patience_counter += 1
 
             # periodic logging
             if (epoch + 1) % log_every == 0 or epoch == 0:
@@ -419,10 +458,27 @@ class Trainer(NeuralNetwork):
                     f"Epoch {epoch+1}/{self.epochs}: "
                     f"Train RMSE={train_rmse:.4f}, Val RMSE={val_rmse:.4f}"
                 )
-                
+            if self.early_stop_patience and patience_counter >= self.early_stop_patience:
+                self.logger.info(f"Early stopping at epoch {epoch+1} (no val improvement in {self.early_stop_patience} epochs)")
+                break
+        
+        # restore best weights if captured
+        if best_weights is not None and best_biases is not None:
+            self.weights = best_weights
+            self.biases = best_biases
+            self.logger.info(f"Restored best weights from epoch {best_epoch} with Val RMSE={best_val:.4f}")
+            final_epoch = best_epoch
+        else:
+            final_epoch = len(train_loss_hist)
+            best_val = val_loss_hist[-1] if val_loss_hist else None
+            best_train = train_loss_hist[-1] if train_loss_hist else None
+
         # save loss histories
         self.train_loss_history = train_loss_hist
         self.val_loss_history = val_loss_hist
+        self.best_val_rmse = float(best_val) if best_val is not None else None
+        self.best_train_rmse = float(best_train) if best_train is not None else None
+        self.best_epoch = int(best_epoch) if best_epoch is not None else final_epoch
         
         # save norm vals and weights
         self.save_norm_vals("normalisation_values.npz", self.directory)

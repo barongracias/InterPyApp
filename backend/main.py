@@ -16,17 +16,11 @@ from typing import List
 # ----------------------
 UPLOAD_DIR = os.path.join("uploads")
 OUTPUT_DIR = os.path.join("outputs")
-OUTPUT_DIR_TF = os.path.join("outputs_tf")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 ALLOWED_ARTIFACTS = {
     "model_weights.npz",
     "normalisation_values.npz",
     "model_metadata.json",
-}
-ALLOWED_ARTIFACTS_TF = {
-    "model_tf.keras",
-    "normalisation_values_tf.npz",
-    "tf_model_metadata.json",
 }
 
 def get_app_logger():
@@ -47,7 +41,7 @@ app_logger = get_app_logger()
 
 def clear_directories():
     """Helper to clean uploads and outputs folders."""
-    for d in [UPLOAD_DIR, OUTPUT_DIR, OUTPUT_DIR_TF]:
+    for d in [UPLOAD_DIR, OUTPUT_DIR]:
         if os.path.exists(d):
             shutil.rmtree(d)
         os.makedirs(d, exist_ok=True)
@@ -167,8 +161,8 @@ async def train_model(
     lr_decay: float | None = Form(None),
     activation: str = Form("relu"),
     weight_init: str = Form("auto"),
-    batch_size: int | None = Form(None),
-    grad_clip: float | None = Form(None),
+    batch_size: int | None = Form(64),
+    grad_clip: float | None = Form(5.0),
     seed: int | None = Form(None),
     model_type: str = Form("numpy"),
 ):
@@ -251,7 +245,7 @@ async def train_model(
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
 
             trainer_tf = TrainerTF(
-                directory=OUTPUT_DIR_TF,
+                directory=OUTPUT_DIR,
                 hidden_sizes=hidden_sizes_list,
                 Lambda=Lambda,
                 epochs=epochs,
@@ -260,6 +254,8 @@ async def train_model(
                 seed=seed,
                 early_stop_patience=early_stop_patience,
                 lr_decay=lr_decay,
+                batch_size=batch_size,
+                grad_clip=grad_clip,
             )
 
             train_loss, val_loss = trainer_tf.train(pkl_path)
@@ -277,7 +273,7 @@ async def train_model(
             X_val = splits["X_val"]
             y_val = splits["y_val"]
 
-            tester_tf = TesterTF(directory=OUTPUT_DIR_TF)
+            tester_tf = TesterTF(directory=OUTPUT_DIR)
             y_pred_train = tester_tf.predict(X_train)
             y_pred_val = tester_tf.predict(X_val)
 
@@ -303,8 +299,9 @@ async def train_model(
                 "early_stop_patience": early_stop_patience,
                 "lr_decay": lr_decay,
                 "seed": seed,
+                "model_type": "tf",
             }
-            meta_path = os.path.join(OUTPUT_DIR_TF, "tf_model_metadata.json")
+            meta_path = os.path.join(OUTPUT_DIR, "tf_model_metadata.json")
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(tf_metadata, f)
 
@@ -320,10 +317,10 @@ async def train_model(
                 "best_epoch": best_epoch,
                 "epochs_run": len(train_loss),
                 "baseline_rmse": baseline_rmse,
-                "final_train_r2": train_r2,
+                "final_train_r2": val_r2,
                 "final_val_r2": val_r2,
                 "plots": ["rmse_vs_epochs_tf.png", "ytrue_vs_ypred_tf.png"],
-                "artifacts": list(ALLOWED_ARTIFACTS_TF),
+                "artifacts": ["model_tf.keras", "normalisation_values_tf.npz", "tf_model_metadata.json"],
             }
 
     except Exception as e:
@@ -434,10 +431,9 @@ async def get_plot(filename: str):
     """
     Serve saved plots from outputs directory.
     """
-    for base in [OUTPUT_DIR, OUTPUT_DIR_TF]:
-        plot_path = os.path.join(base, filename)
-        if os.path.exists(plot_path):
-            return FileResponse(plot_path)
+    plot_path = os.path.join(OUTPUT_DIR, filename)
+    if os.path.exists(plot_path):
+        return FileResponse(plot_path)
     return JSONResponse(status_code=404, content={"error": f"Plot not found: {filename}"})
 
 @app.get("/artifacts/{filename}")
@@ -450,8 +446,6 @@ async def get_artifact(filename: str):
         return JSONResponse(status_code=404, content={"error": f"Artifact not allowed: {filename}"})
     if filename in ALLOWED_ARTIFACTS and os.path.exists(os.path.join(OUTPUT_DIR, filename)):
         return FileResponse(os.path.join(OUTPUT_DIR, filename))
-    if filename in ALLOWED_ARTIFACTS_TF and os.path.exists(os.path.join(OUTPUT_DIR_TF, filename)):
-        return FileResponse(os.path.join(OUTPUT_DIR_TF, filename))
     return JSONResponse(status_code=404, content={"error": f"Artifact not found: {filename}"})
 
 
@@ -510,7 +504,7 @@ async def reset_directories():
     """
     try:
         # Remove and recreate both directories
-        for directory in [UPLOAD_DIR, OUTPUT_DIR, OUTPUT_DIR_TF]:
+        for directory in [UPLOAD_DIR, OUTPUT_DIR]:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
             os.makedirs(directory, exist_ok=True)

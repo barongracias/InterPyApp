@@ -47,7 +47,7 @@ export default function Home() {
   const [trainValSplit, setTrainValSplit] = useState("0.8");
   const [activation, setActivation] = useState("relu");
   const [weightInit, setWeightInit] = useState("auto");
-  const [batchSize, setBatchSize] = useState("32");
+  const [batchSize, setBatchSize] = useState("64");
   const [gradClip, setGradClip] = useState("5");
   const [seed, setSeed] = useState("42");
   const [lrDecay, setLrDecay] = useState("0.98");
@@ -69,6 +69,7 @@ export default function Home() {
   const [uploadComplete, setUploadComplete] = useState(false);
   const [uploadHistory, setUploadHistory] = useState<string[]>([]);
   const [modelType, setModelType] = useState<"numpy" | "tf">("numpy");
+  const [plotKey, setPlotKey] = useState<number>(Date.now());
 
   const backend = "http://localhost:8000";
   const backendAvailable = healthStatus === "ok";
@@ -295,7 +296,14 @@ export default function Home() {
     setTrainLoading(false);
 
     if (res.ok) {
-      setTrainResult(data);
+      const fallbackPlots =
+        data.plots && data.plots.length
+          ? data.plots
+          : data.model_type === "tf"
+          ? ["rmse_vs_epochs_tf.png", "ytrue_vs_ypred_tf.png"]
+          : ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"];
+      setTrainResult({ ...data, plots: fallbackPlots });
+      setPlotKey(Date.now());
       setStep(5);
     } else {
       alert(data.error || "Training failed");
@@ -552,7 +560,13 @@ export default function Home() {
                   NumPy backend
                 </button>
                 <button
-                  onClick={() => setModelType("tf")}
+                  onClick={() => {
+                    setModelType("tf");
+                    setLearningRate("0.0015");
+                    setBatchSize("64");
+                    setGradClip("5");
+                    setHiddenSizes("64,32,16");
+                  }}
                   className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
                     modelType === "tf"
                       ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
@@ -956,7 +970,7 @@ export default function Home() {
                   {trainResult.plots.map((plot: string) => (
                     <div key={plot} className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
                       <img
-                        src={`${backend}/plots/${plot}`}
+                        src={`${backend}/plots/${plot}?k=${plotKey}`}
                         alt={plot}
                         className="w-full"
                       />

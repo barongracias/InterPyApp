@@ -7,14 +7,21 @@ from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 import tensorflow as tf
+import matplotlib
+
+# ensure headless plotting
+matplotlib.use("Agg")
 
 from .logger import get_console_logger
 from .utils import log_call, timer
 from .tf_model import build_tf_model
 from interpy_bg.plotter import plot_loss, plot_predictions
+
+
+class TrainerTF:
     """
     TensorFlow/Keras trainer for the 5D→1D regressor.
-    Uses the same data loading/normalisation pipeline as the numpy trainer.
+    Uses its own data loading/normalisation pipeline mirroring the NumPy trainer.
     """
 
     def __init__(
@@ -29,23 +36,9 @@ from interpy_bg.plotter import plot_loss, plot_predictions
         early_stop_patience: Optional[int] = None,
         lr_decay: Optional[float] = None,
         lr_decay_patience: int = 10,
+        batch_size: Optional[int] = 64,
+        grad_clip: Optional[float] = 5.0,
     ) -> None:
-        """
-        Initialise the TensorFlow trainer.
-
-        Args:
-            directory: Directory where artifacts will be saved.
-            hidden_sizes: Sizes of hidden layers.
-            Lambda: L2 regularisation strength.
-            epochs: Number of training epochs.
-            learning_rate: Optimiser learning rate.
-            train_val_split: Fraction of data for training (rest for validation).
-            seed: Optional RNG seed.
-            early_stop_patience: Optional epochs without improvement before stopping.
-            lr_decay: Optional factor (<1) for ReduceLROnPlateau.
-            lr_decay_patience: Patience for LR decay when lr_decay is set.
-        """
-        
         if any(h <= 0 for h in hidden_sizes):
             raise ValueError("Hidden sizes must be positive.")
         if Lambda <= 0:
@@ -62,6 +55,10 @@ from interpy_bg.plotter import plot_loss, plot_predictions
             raise ValueError("lr_decay must be in (0, 1) if provided.")
         if lr_decay_patience <= 0:
             raise ValueError("lr_decay_patience must be positive.")
+        if batch_size is not None and batch_size <= 0:
+            raise ValueError("batch_size must be positive if provided.")
+        if grad_clip is not None and grad_clip <= 0:
+            raise ValueError("grad_clip must be positive if provided.")
 
         self.directory = directory
         self.hidden_sizes = list(hidden_sizes)
@@ -73,64 +70,32 @@ from interpy_bg.plotter import plot_loss, plot_predictions
         self.early_stop_patience = early_stop_patience
         self.lr_decay = lr_decay
         self.lr_decay_patience = lr_decay_patience
+        self.batch_size = batch_size
+        self.grad_clip = grad_clip
 
         os.makedirs(self.directory, exist_ok=True)
         self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
         self.logger.info(
             f"TrainerTF initialised: hidden_sizes={self.hidden_sizes}, Lambda={Lambda}, epochs={epochs}, "
-            f"lr={learning_rate}, train_val_split={train_val_split}, seed={seed}, early_stop={early_stop_patience}, lr_decay={lr_decay}"
+            f"lr={learning_rate}, train_val_split={train_val_split}, seed={seed}, early_stop={early_stop_patience}, "
+            f"lr_decay={lr_decay}, batch_size={batch_size}, grad_clip={grad_clip}"
         )
         tf.random.set_seed(seed if seed is not None else 0)
         np.random.seed(seed if seed is not None else 0)
 
         self.model = build_tf_model(self.hidden_sizes, self.Lambda)
+        adam_kwargs = {}
+        if self.grad_clip is not None:
+            adam_kwargs["clipnorm"] = self.grad_clip
         self.model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
+            optimizer=tf.keras.optimizers.Adam(
+                learning_rate=self.learning_rate,
+                **adam_kwargs,
+            ),
             loss="mse",
             metrics=[tf.keras.metrics.RootMeanSquaredError(name="rmse")],
         )
 
-    @log_call
-    def _save_norm_vals(self, mean: np.ndarray, std: np.ndarray, filename: str = "normalisation_values_tf.npz") -> str:
-        """
-        Persist normalisation statistics for later inference.
-        """
-        
-        path = os.path.join(self.directory, filename)
-        np.savez(path, mean=mean, std=std)
-        return path
-
-    def _callbacks(self) -> List[tf.keras.callbacks.Callback]:
-        """
-        Build optional callbacks for early stopping and learning-rate decay.
-        """
-        
-        callbacks: List[tf.keras.callbacks.Callback] = []
-        if self.early_stop_patience:
-            callbacks.append(
-                tf.keras.callbacks.EarlyStopping(
-                    monitor="val_rmse",
-                    mode="min",
-                    patience=self.early_stop_patience,
-                    restore_best_weights=True,
-                    verbose=0,
-                )
-            )
-        if self.lr_decay:
-            callbacks.append(
-                tf.keras.callbacks.ReduceLROnPlateau(
-                    monitor="val_rmse",
-                    mode="min",
-                    factor=self.lr_decay,
-                    patience=self.lr_decay_patience,
-                    min_lr=1e-6,
-                    verbose=0,
-                )
-            )
-        return callbacks
-
-    @timer
-    @log_call
     @staticmethod
     def load_raw_data(pkl_path: str) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -243,6 +208,8 @@ from interpy_bg.plotter import plot_loss, plot_predictions
             "std": std,
         }
 
+    @timer
+    @log_call
     def train(self, pkl_path: str) -> Tuple[list[float], list[float]]:
         """
         Train the TensorFlow model. Returns train/val RMSE history.
@@ -269,6 +236,7 @@ from interpy_bg.plotter import plot_loss, plot_predictions
             epochs=self.epochs,
             verbose=0,
             callbacks=self._callbacks(),
+            batch_size=self.batch_size,
         )
 
         # save artifacts
@@ -279,10 +247,38 @@ from interpy_bg.plotter import plot_loss, plot_predictions
         train_rmse = [float(v) for v in history.history.get("rmse", [])]
         val_rmse = [float(v) for v in history.history.get("val_rmse", [])]
 
-        # plots
+        # plots (use best weights if early stopping restored)
         y_pred_train = self.model.predict(X_train, verbose=0)
         y_pred_val = self.model.predict(X_val, verbose=0)
         plot_loss(train_rmse, val_rmse, "rmse_vs_epochs_tf.png", self.directory)
-        plot_predictions(y_train, y_pred_train, "ytrue_vs_ypred_tf.png", self.directory)
+        plot_predictions(y_val, y_pred_val, "ytrue_vs_ypred_tf.png", self.directory)
 
         return train_rmse, val_rmse
+
+    def _callbacks(self) -> List[tf.keras.callbacks.Callback]:
+        """
+        Build optional callbacks for early stopping and learning-rate decay.
+        """
+        callbacks: List[tf.keras.callbacks.Callback] = []
+        if self.early_stop_patience:
+            callbacks.append(
+                tf.keras.callbacks.EarlyStopping(
+                    monitor="val_rmse",
+                    mode="min",
+                    patience=self.early_stop_patience,
+                    restore_best_weights=True,
+                    verbose=0,
+                )
+            )
+        if self.lr_decay:
+            callbacks.append(
+                tf.keras.callbacks.ReduceLROnPlateau(
+                    monitor="val_rmse",
+                    mode="min",
+                    factor=self.lr_decay,
+                    patience=self.lr_decay_patience,
+                    min_lr=1e-6,
+                    verbose=0,
+                )
+            )
+        return callbacks

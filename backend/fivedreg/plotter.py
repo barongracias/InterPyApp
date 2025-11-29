@@ -8,7 +8,7 @@ from .logger import get_console_logger
 
 def plot_loss(train_loss: list[float],
               val_loss: list[float],
-              filename: str = "rmse_vs_epochs_tf.png",
+              filename: str = "rmse_vs_epochs.png",
               directory: str | None = None) -> None:
     """
     Plot training and validation RMSE vs epochs and save the figure.
@@ -32,7 +32,7 @@ def plot_loss(train_loss: list[float],
 
         plt.xlabel("Epochs", fontsize=12)
         plt.ylabel("RMSE", fontsize=12)
-        plt.title("Training vs Validation RMSE (TF)", fontsize=14)
+        plt.title("Training vs Validation RMSE", fontsize=14)
         plt.grid(True, linestyle="--", alpha=0.5)
         plt.legend(frameon=False, fontsize=10)
         plt.tight_layout()
@@ -48,7 +48,7 @@ def plot_loss(train_loss: list[float],
 
 def plot_predictions(y_true: list[float],
                      y_pred: list[float],
-                     filename: str = "ytrue_vs_ypred_tf.png",
+                     filename: str = "ytrue_vs_ypred.png",
                      directory: str | None = None) -> None:
     """
     Plot predicted vs true values for the model and save as a figure.
@@ -74,7 +74,7 @@ def plot_predictions(y_true: list[float],
 
         plt.xlabel("True Values", fontsize=12)
         plt.ylabel("Predicted Values", fontsize=12)
-        plt.title("Predicted vs True Values (TF)", fontsize=14)
+        plt.title("Predicted vs True Values", fontsize=14)
         plt.grid(True, linestyle="--", alpha=0.5)
         plt.legend(frameon=False, fontsize=10)
         plt.tight_layout()

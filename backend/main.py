@@ -14,8 +14,9 @@ from typing import List
 # ----------------------
 # DIRECTORIES
 # ----------------------
-UPLOAD_DIR = os.path.join("uploads")
-OUTPUT_DIR = os.path.join("outputs")
+BASE_DIR = os.path.dirname(__file__)
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 ALLOWED_ARTIFACTS = {
     "model_weights.npz",
@@ -319,7 +320,7 @@ async def train_model(
                 "baseline_rmse": baseline_rmse,
                 "final_train_r2": train_r2,
                 "final_val_r2": val_r2,
-                "plots": ["rmse_vs_epochs_tf.png", "ytrue_vs_ypred_tf.png"],
+                "plots": ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"],
                 "artifacts": ["model_tf.keras", "normalisation_values_tf.npz", "tf_model_metadata.json"],
             }
 

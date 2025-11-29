@@ -300,7 +300,7 @@ export default function Home() {
         data.plots && data.plots.length
           ? data.plots
           : data.model_type === "tf"
-          ? ["rmse_vs_epochs_tf.png", "ytrue_vs_ypred_tf.png"]
+          ? ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"]
           : ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"];
       setTrainResult({ ...data, plots: fallbackPlots });
       setPlotKey(Date.now());

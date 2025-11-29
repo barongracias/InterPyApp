@@ -257,8 +257,8 @@ class TrainerTF:
 
         # plots (use best weights if early stopping restored)
         y_pred_val = self.model.predict(X_val, verbose=0)
-        plot_loss(train_rmse, val_rmse, "rmse_vs_epochs_tf.png", self.directory)
-        plot_predictions(y_val, y_pred_val, "ytrue_vs_ypred_tf.png", self.directory)
+        plot_loss(train_rmse, val_rmse, "rmse_vs_epochs.png", self.directory)
+        plot_predictions(y_val, y_pred_val, "ytrue_vs_ypred.png", self.directory)
 
         return train_rmse, val_rmse
 

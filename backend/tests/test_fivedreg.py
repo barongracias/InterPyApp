@@ -41,6 +41,8 @@ def test_fivedreg_smoke(tmp_path):
     assert all(np.isfinite(val_loss))
     assert os.path.exists(out_dir / "model_tf.keras")
     assert os.path.exists(out_dir / "normalisation_values_tf.npz")
+    assert os.path.exists(out_dir / "rmse_vs_epochs.png")
+    assert os.path.exists(out_dir / "ytrue_vs_ypred.png")
 
     tester = TesterTF(directory=str(out_dir))
     X_test, _ = synthetic_5d(3, seed=9999)

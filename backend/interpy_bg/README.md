@@ -17,7 +17,7 @@ from interpy_bg.trainer import Trainer
 from interpy_bg.tester import Tester
 from interpy_bg.synthetic import synthetic_5d_pickle
 
-out_dir = "outputs_np"
+out_dir = "outputs"
 os.makedirs(out_dir, exist_ok=True)
 
 # create a training pickle (dict with X, y)

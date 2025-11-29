@@ -48,4 +48,4 @@ with open(train_pkl, "rb") as f:
 y_pred = tester.predict(data["X"])
 ```
 
-Artifacts: `model_weights.npz`, `normalisation_values.npz`, `model_metadata.json`, `rmse_vs_epochs.png`, `ytrue_vs_ypred.png`. Metadata includes architecture, regularisation, activation/init, batch/clip/seed, and best metrics. You can serve artifacts via the FastAPI `/artifacts` and `/plots` endpoints.
+Artifacts: `model_weights.npz`, `normalisation_values.npz`, `model_metadata.json`, `rmse_vs_epochs.png`, `ytrue_vs_ypred.png`. Metadata includes architecture, regularisation, activation/init, batch/clip/seed, best metrics, and R². You can serve artifacts via the FastAPI `/artifacts` and `/plots` endpoints. For TensorFlow outputs, see `backend/fivedreg/README.md`.

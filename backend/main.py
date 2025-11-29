@@ -2,6 +2,7 @@ import os
 import shutil
 import pickle
 import numpy as np
+import json
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,11 +16,17 @@ from typing import List
 # ----------------------
 UPLOAD_DIR = os.path.join("uploads")
 OUTPUT_DIR = os.path.join("outputs")
+OUTPUT_DIR_TF = os.path.join("outputs_tf")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 ALLOWED_ARTIFACTS = {
     "model_weights.npz",
     "normalisation_values.npz",
     "model_metadata.json",
+}
+ALLOWED_ARTIFACTS_TF = {
+    "model_tf.keras",
+    "normalisation_values_tf.npz",
+    "tf_model_metadata.json",
 }
 
 def get_app_logger():
@@ -40,7 +47,7 @@ app_logger = get_app_logger()
 
 def clear_directories():
     """Helper to clean uploads and outputs folders."""
-    for d in [UPLOAD_DIR, OUTPUT_DIR]:
+    for d in [UPLOAD_DIR, OUTPUT_DIR, OUTPUT_DIR_TF]:
         if os.path.exists(d):
             shutil.rmtree(d)
         os.makedirs(d, exist_ok=True)
@@ -163,6 +170,7 @@ async def train_model(
     batch_size: int | None = Form(None),
     grad_clip: float | None = Form(None),
     seed: int | None = Form(None),
+    model_type: str = Form("numpy"),
 ):
     """
     Train the neural network model using provided hyperparameters and uploaded .pkl file.
@@ -173,6 +181,9 @@ async def train_model(
             return JSONResponse(status_code=400, content={"error": f"File not found: {pkl_filename}"})
 
         hidden_sizes_list = [int(x.strip()) for x in hidden_sizes.split(",") if x.strip()]
+        model_type = model_type.lower()
+        if model_type not in {"numpy", "tf"}:
+            return JSONResponse(status_code=400, content={"error": "model_type must be 'numpy' or 'tf'."})
         validation_error = _validate_hyperparams(
             hidden_sizes_list, Lambda, epochs, learning_rate, train_val_split, beta1, beta2, epsilon
         )
@@ -193,43 +204,127 @@ async def train_model(
         if seed is not None and seed < 0:
             return JSONResponse(status_code=400, content={"error": "seed must be non-negative if provided."})
 
-        trainer = Trainer(
-            directory=OUTPUT_DIR,
-            hidden_sizes=hidden_sizes_list,
-            Lambda=Lambda,
-            epochs=epochs,
-            learning_rate=learning_rate,
-            train_val_split=train_val_split,
-            beta1=beta1,
-            beta2=beta2,
-            epsilon=epsilon,
-            early_stop_patience=early_stop_patience,
-            lr_decay=lr_decay,
-            activation=activation,
-            weight_init=weight_init,
-            batch_size=batch_size,
-            grad_clip=grad_clip,
-            seed=seed,
-        )
+        if model_type == "numpy":
+            trainer = Trainer(
+                directory=OUTPUT_DIR,
+                hidden_sizes=hidden_sizes_list,
+                Lambda=Lambda,
+                epochs=epochs,
+                learning_rate=learning_rate,
+                train_val_split=train_val_split,
+                beta1=beta1,
+                beta2=beta2,
+                epsilon=epsilon,
+                early_stop_patience=early_stop_patience,
+                lr_decay=lr_decay,
+                activation=activation,
+                weight_init=weight_init,
+                batch_size=batch_size,
+                grad_clip=grad_clip,
+                seed=seed,
+            )
 
-        train_loss, val_loss = trainer.train(pkl_path)
+            train_loss, val_loss = trainer.train(pkl_path)
 
-        return {
-            "message": "Training completed successfully.",
-            "train_loss_start": train_loss[0],
-            "train_loss_end": train_loss[-1],
-            "val_loss_start": val_loss[0],
-            "val_loss_end": val_loss[-1],
-            "best_val_rmse": trainer.best_val_rmse,
-            "best_train_rmse": trainer.best_train_rmse,
-            "best_epoch": trainer.best_epoch,
-            "epochs_run": len(train_loss),
-            "baseline_rmse": trainer.baseline_rmse,
-            "final_train_r2": trainer.final_train_r2,
-            "final_val_r2": trainer.final_val_r2,
-            "plots": ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"],
-            "artifacts": list(ALLOWED_ARTIFACTS),
-        }
+            return {
+                "message": "Training completed successfully.",
+                "model_type": "numpy",
+                "train_loss_start": train_loss[0],
+                "train_loss_end": train_loss[-1],
+                "val_loss_start": val_loss[0],
+                "val_loss_end": val_loss[-1],
+                "best_val_rmse": trainer.best_val_rmse,
+                "best_train_rmse": trainer.best_train_rmse,
+                "best_epoch": trainer.best_epoch,
+                "epochs_run": len(train_loss),
+                "baseline_rmse": trainer.baseline_rmse,
+                "final_train_r2": trainer.final_train_r2,
+                "final_val_r2": trainer.final_val_r2,
+                "plots": ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"],
+                "artifacts": list(ALLOWED_ARTIFACTS),
+            }
+        else:
+            try:
+                from fivedreg.trainer_tf import TrainerTF
+                from fivedreg.tester_tf import TesterTF
+            except Exception as e:
+                return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
+
+            trainer_tf = TrainerTF(
+                directory=OUTPUT_DIR_TF,
+                hidden_sizes=hidden_sizes_list,
+                Lambda=Lambda,
+                epochs=epochs,
+                learning_rate=learning_rate,
+                train_val_split=train_val_split,
+                seed=seed,
+                early_stop_patience=early_stop_patience,
+                lr_decay=lr_decay,
+            )
+
+            train_loss, val_loss = trainer_tf.train(pkl_path)
+
+            # recompute splits deterministically to score metrics
+            splits = Trainer.load_dataset(
+                pkl_path,
+                train_frac=train_val_split,
+                val_frac=1 - train_val_split,
+                test_frac=0.0,
+                random_state=seed,
+            )
+            X_train = splits["X_train"]
+            y_train = splits["y_train"]
+            X_val = splits["X_val"]
+            y_val = splits["y_val"]
+
+            tester_tf = TesterTF(directory=OUTPUT_DIR_TF)
+            y_pred_train = tester_tf.predict(X_train)
+            y_pred_val = tester_tf.predict(X_val)
+
+            train_rmse_end = float(Trainer.calc_rmse(y_train, y_pred_train))
+            val_rmse_end = float(Trainer.calc_rmse(y_val, y_pred_val))
+            train_r2 = Trainer.calc_r2(y_train, y_pred_train)
+            val_r2 = Trainer.calc_r2(y_val, y_pred_val)
+            baseline_rmse = float(Trainer.calc_rmse(y_train, np.full_like(y_train, y_train.mean())))
+            best_epoch = int(np.argmin(val_loss) + 1) if val_loss else None
+
+            # save TF metadata
+            tf_metadata = {
+                "hidden_sizes": hidden_sizes_list,
+                "Lambda": Lambda,
+                "epochs_configured": epochs,
+                "epochs_run": len(train_loss),
+                "best_epoch": best_epoch,
+                "best_val_rmse": float(min(val_loss)) if val_loss else None,
+                "best_train_rmse": float(min(train_loss)) if train_loss else None,
+                "baseline_rmse": baseline_rmse,
+                "final_train_r2": train_r2,
+                "final_val_r2": val_r2,
+                "early_stop_patience": early_stop_patience,
+                "lr_decay": lr_decay,
+                "seed": seed,
+            }
+            meta_path = os.path.join(OUTPUT_DIR_TF, "tf_model_metadata.json")
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(tf_metadata, f)
+
+            return {
+                "message": "Training completed successfully.",
+                "model_type": "tf",
+                "train_loss_start": train_loss[0] if train_loss else None,
+                "train_loss_end": train_loss[-1] if train_loss else None,
+                "val_loss_start": val_loss[0] if val_loss else None,
+                "val_loss_end": val_loss[-1] if val_loss else None,
+                "best_val_rmse": float(min(val_loss)) if val_loss else None,
+                "best_train_rmse": float(min(train_loss)) if train_loss else None,
+                "best_epoch": best_epoch,
+                "epochs_run": len(train_loss),
+                "baseline_rmse": baseline_rmse,
+                "final_train_r2": train_r2,
+                "final_val_r2": val_r2,
+                "plots": ["rmse_vs_epochs_tf.png", "ytrue_vs_ypred_tf.png"],
+                "artifacts": list(ALLOWED_ARTIFACTS_TF),
+            }
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -239,7 +334,8 @@ async def predict(
     hidden_sizes: str = Form(None),  # optional; validated if provided
     Lambda: float = Form(None),      # optional; validated if provided
     input_file: UploadFile = File(None),
-    input_values: str = Form(None)
+    input_values: str = Form(None),
+    model_type: str = Form("numpy"),
 ):
     """
     Run predictions using trained model.
@@ -251,6 +347,35 @@ async def predict(
     try:
         # load trained metadata to ensure architecture matches saved weights
         metadata = Tester.load_metadata(directory=OUTPUT_DIR)
+        model_type = model_type.lower()
+        if model_type not in {"numpy", "tf"}:
+            return JSONResponse(status_code=400, content={"error": "model_type must be 'numpy' or 'tf'."})
+
+        if model_type == "tf":
+            try:
+                from fivedreg.tester_tf import TesterTF
+            except Exception as e:
+                return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
+            tester_tf = TesterTF(directory=OUTPUT_DIR_TF)
+
+            if input_file:
+                if not input_file.filename.endswith(".pkl"):
+                    return JSONResponse(status_code=400, content={"error": "Only .pkl files are accepted."})
+                file_path = os.path.join(UPLOAD_DIR, input_file.filename)
+                with open(file_path, "wb") as f:
+                    f.write(await input_file.read())
+                y_pred = tester_tf.predict(file_path)
+                os.remove(file_path)
+            elif input_values:
+                values = np.array([[float(x.strip()) for x in input_values.split(",")]], dtype=float)
+                if values.shape != (1, 5):
+                    return JSONResponse(status_code=400, content={"error": "Input must contain exactly 5 values."})
+                y_pred = tester_tf.predict(values)
+            else:
+                return JSONResponse(status_code=400, content={"error": "Provide either a .pkl file or input values."})
+
+            return {"y_pred": y_pred.tolist(), "model_type": "tf"}
+
         trained_hidden_sizes = metadata.get("hidden_sizes")
         trained_lambda = metadata.get("Lambda")
 
@@ -309,22 +434,25 @@ async def get_plot(filename: str):
     """
     Serve saved plots from outputs directory.
     """
-    plot_path = os.path.join(OUTPUT_DIR, filename)
-    if not os.path.exists(plot_path):
-        return JSONResponse(status_code=404, content={"error": f"Plot not found: {filename}"})
-    return FileResponse(plot_path)
+    for base in [OUTPUT_DIR, OUTPUT_DIR_TF]:
+        plot_path = os.path.join(base, filename)
+        if os.path.exists(plot_path):
+            return FileResponse(plot_path)
+    return JSONResponse(status_code=404, content={"error": f"Plot not found: {filename}"})
 
 @app.get("/artifacts/{filename}")
 async def get_artifact(filename: str):
     """
     Serve saved artifacts (weights, norm values, metadata).
     """
-    if filename not in ALLOWED_ARTIFACTS:
+    allowed = ALLOWED_ARTIFACTS | ALLOWED_ARTIFACTS_TF
+    if filename not in allowed:
         return JSONResponse(status_code=404, content={"error": f"Artifact not allowed: {filename}"})
-    artifact_path = os.path.join(OUTPUT_DIR, filename)
-    if not os.path.exists(artifact_path):
-        return JSONResponse(status_code=404, content={"error": f"Artifact not found: {filename}"})
-    return FileResponse(artifact_path)
+    if filename in ALLOWED_ARTIFACTS and os.path.exists(os.path.join(OUTPUT_DIR, filename)):
+        return FileResponse(os.path.join(OUTPUT_DIR, filename))
+    if filename in ALLOWED_ARTIFACTS_TF and os.path.exists(os.path.join(OUTPUT_DIR_TF, filename)):
+        return FileResponse(os.path.join(OUTPUT_DIR_TF, filename))
+    return JSONResponse(status_code=404, content={"error": f"Artifact not found: {filename}"})
 
 
 @app.post("/evaluate")
@@ -343,15 +471,27 @@ async def evaluate_model(file: UploadFile = File(...)):
             os.remove(temp_path)
             return JSONResponse(status_code=400, content={"error": "File too large. Limit is 10 MB."})
 
-        # ensure trained model exists
-        metadata = Tester.load_metadata(directory=OUTPUT_DIR)
-        tester = Tester(
-            hidden_sizes=[int(x) for x in metadata.get("hidden_sizes", [])],
-            Lambda=float(metadata.get("Lambda", 0.01)),
-            directory=OUTPUT_DIR,
-            activation=metadata.get("activation", "sigmoid"),
-            weight_init=metadata.get("weight_init", "auto"),
-        )
+        # ensure trained model exists (prefer numpy if available)
+        model_type = "numpy"
+        tester = None
+        if os.path.exists(os.path.join(OUTPUT_DIR, "model_metadata.json")):
+            metadata = Tester.load_metadata(directory=OUTPUT_DIR)
+            tester = Tester(
+                hidden_sizes=[int(x) for x in metadata.get("hidden_sizes", [])],
+                Lambda=float(metadata.get("Lambda", 0.01)),
+                directory=OUTPUT_DIR,
+                activation=metadata.get("activation", "sigmoid"),
+                weight_init=metadata.get("weight_init", "auto"),
+            )
+        elif os.path.exists(os.path.join(OUTPUT_DIR_TF, "model_tf.keras")):
+            try:
+                from fivedreg.tester_tf import TesterTF
+            except Exception as e:
+                return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
+            tester = TesterTF(directory=OUTPUT_DIR_TF)
+            model_type = "tf"
+        else:
+            return JSONResponse(status_code=400, content={"error": "Model not trained yet. Train before evaluating."})
 
         # load data to get y
         X, y = Trainer.load_raw_data(temp_path)
@@ -359,9 +499,7 @@ async def evaluate_model(file: UploadFile = File(...)):
         y_pred = tester.predict(temp_path)
         rmse = float(Trainer.calc_rmse(y, y_pred))
         os.remove(temp_path)
-        return {"rmse": rmse, "samples": int(len(y))}
-    except FileNotFoundError:
-        return JSONResponse(status_code=400, content={"error": "Model not trained yet. Train before evaluating."})
+        return {"rmse": rmse, "samples": int(len(y)), "model_type": model_type}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
@@ -372,7 +510,7 @@ async def reset_directories():
     """
     try:
         # Remove and recreate both directories
-        for directory in [UPLOAD_DIR, OUTPUT_DIR]:
+        for directory in [UPLOAD_DIR, OUTPUT_DIR, OUTPUT_DIR_TF]:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
             os.makedirs(directory, exist_ok=True)

@@ -8,6 +8,9 @@ from typing import Union
 import numpy as np
 import tensorflow as tf
 
+from .logger import get_console_logger
+from .utils import log_call, timer
+
 
 class TesterTF:
     """
@@ -30,11 +33,15 @@ class TesterTF:
         if not os.path.exists(self.norm_path):
             raise FileNotFoundError(f"Normalisation values not found at {self.norm_path}")
 
+        self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
+        self.logger.info("TesterTF initialised")
+
         self.model = tf.keras.models.load_model(self.model_path)
         norm = np.load(self.norm_path)
         self.mean = norm["mean"]
         self.std = norm["std"]
 
+    @log_call
     def _load_input(self, X_data: Union[np.ndarray, str]) -> np.ndarray:
         """
         Load and validate input data from array or pickle path.
@@ -53,6 +60,8 @@ class TesterTF:
             raise ValueError(f"Expected input shape (N, 5), got {X.shape}")
         return np.asarray(X, dtype=np.float32)
 
+    @timer
+    @log_call
     def predict(self, X_data: Union[np.ndarray, str]) -> np.ndarray:
         """
         Run inference on normalised input data.
@@ -67,4 +76,5 @@ class TesterTF:
         X = self._load_input(X_data)
         X_norm = (X - self.mean) / self.std
         y_pred = self.model.predict(X_norm, verbose=0)
+        self.logger.info(f"Generated predictions for {len(X)} samples (TF).")
         return y_pred

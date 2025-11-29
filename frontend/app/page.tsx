@@ -28,6 +28,7 @@ type TrainResult = {
   artifacts?: string[];
   final_train_r2?: number;
   final_val_r2?: number;
+  model_type?: string;
 };
 
 type Predictions = number[][] | null;
@@ -67,6 +68,7 @@ export default function Home() {
   const [datasetStats, setDatasetStats] = useState<DatasetStats | null>(null);
   const [uploadComplete, setUploadComplete] = useState(false);
   const [uploadHistory, setUploadHistory] = useState<string[]>([]);
+  const [modelType, setModelType] = useState<"numpy" | "tf">("numpy");
 
   const backend = "http://localhost:8000";
   const backendAvailable = healthStatus === "ok";
@@ -252,6 +254,7 @@ export default function Home() {
       setEpsilon("1e-8");
       setUploadComplete(false);
       setUploadHistory([]);
+      setModelType("numpy");
     } catch (error) {
       console.error("Reset error:", error);
       alert("Failed to reset the app. Is the backend running?");
@@ -282,6 +285,7 @@ export default function Home() {
     if (seed !== "") formData.append("seed", seed);
     if (lrDecay !== "") formData.append("lr_decay", lrDecay);
     if (earlyStop !== "") formData.append("early_stop_patience", earlyStop);
+    formData.append("model_type", modelType);
 
     const res = await fetch(`${backend}/train`, {
       method: "POST",
@@ -314,6 +318,7 @@ export default function Home() {
       }
       formData.append("input_values", testInput);
     }
+    formData.append("model_type", modelType);
 
     try {
       const res = await fetch(`${backend}/predict`, {
@@ -533,6 +538,29 @@ export default function Home() {
                   <Settings className="w-6 h-6 text-white" />
                 </div>
                 <h2 className="text-3xl font-bold text-gray-800">Configure Network</h2>
+              </div>
+
+              <div className="flex gap-3 mb-6">
+                <button
+                  onClick={() => setModelType("numpy")}
+                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
+                    modelType === "numpy"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  NumPy backend
+                </button>
+                <button
+                  onClick={() => setModelType("tf")}
+                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
+                    modelType === "tf"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  TensorFlow backend
+                </button>
               </div>
 
               <div className="space-y-5">
@@ -851,7 +879,12 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mr-4">
                   <BarChart3 className="w-6 h-6 text-white" />
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800">Training Results</h2>
+                <div className="flex flex-col">
+                  <h2 className="text-3xl font-bold text-gray-800">Training Results</h2>
+                  <span className="mt-1 inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700">
+                    {trainResult.model_type === "tf" ? "TensorFlow backend" : "NumPy backend"}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-8">
@@ -918,17 +951,19 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="space-y-6">
-                {trainResult.plots.map((plot: string) => (
-                  <div key={plot} className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
-                    <img
-                      src={`${backend}/plots/${plot}`}
-                      alt={plot}
-                      className="w-full"
-                    />
-                  </div>
-                ))}
-              </div>
+              {trainResult.plots && trainResult.plots.length > 0 && (
+                <div className="space-y-6">
+                  {trainResult.plots.map((plot: string) => (
+                    <div key={plot} className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+                      <img
+                        src={`${backend}/plots/${plot}`}
+                        alt={plot}
+                        className="w-full"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {trainResult.artifacts && (
                 <div className="mt-8">

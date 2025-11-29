@@ -317,7 +317,7 @@ async def train_model(
                 "best_epoch": best_epoch,
                 "epochs_run": len(train_loss),
                 "baseline_rmse": baseline_rmse,
-                "final_train_r2": val_r2,
+                "final_train_r2": train_r2,
                 "final_val_r2": val_r2,
                 "plots": ["rmse_vs_epochs_tf.png", "ytrue_vs_ypred_tf.png"],
                 "artifacts": ["model_tf.keras", "normalisation_values_tf.npz", "tf_model_metadata.json"],
@@ -353,7 +353,7 @@ async def predict(
                 from fivedreg.tester_tf import TesterTF
             except Exception as e:
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
-            tester_tf = TesterTF(directory=OUTPUT_DIR_TF)
+            tester_tf = TesterTF(directory=OUTPUT_DIR)
 
             if input_file:
                 if not input_file.filename.endswith(".pkl"):
@@ -441,7 +441,7 @@ async def get_artifact(filename: str):
     """
     Serve saved artifacts (weights, norm values, metadata).
     """
-    allowed = ALLOWED_ARTIFACTS | ALLOWED_ARTIFACTS_TF
+    allowed = ALLOWED_ARTIFACTS
     if filename not in allowed:
         return JSONResponse(status_code=404, content={"error": f"Artifact not allowed: {filename}"})
     if filename in ALLOWED_ARTIFACTS and os.path.exists(os.path.join(OUTPUT_DIR, filename)):
@@ -477,12 +477,12 @@ async def evaluate_model(file: UploadFile = File(...)):
                 activation=metadata.get("activation", "sigmoid"),
                 weight_init=metadata.get("weight_init", "auto"),
             )
-        elif os.path.exists(os.path.join(OUTPUT_DIR_TF, "model_tf.keras")):
+        elif os.path.exists(os.path.join(OUTPUT_DIR, "model_tf.keras")):
             try:
                 from fivedreg.tester_tf import TesterTF
             except Exception as e:
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
-            tester = TesterTF(directory=OUTPUT_DIR_TF)
+            tester = TesterTF(directory=OUTPUT_DIR)
             model_type = "tf"
         else:
             return JSONResponse(status_code=400, content={"error": "Model not trained yet. Train before evaluating."})

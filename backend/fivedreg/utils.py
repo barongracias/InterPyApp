@@ -1,14 +1,12 @@
 import time
 import functools
 
-
 def _get_logger_from_args(args):
     """Extract logger if args[0] is an object with .logger attribute."""
     if not args:
         return None
     obj = args[0]
     return getattr(obj, "logger", None)
-
 
 def log_call(func):
     """Decorator that logs entry/exit using self.logger if available."""
@@ -22,7 +20,6 @@ def log_call(func):
             logger.debug(f"[CALL] ← {func.__name__}()")
         return result
     return wrapper
-
 
 def timer(func):
     """Decorator that logs execution time using self.logger if available."""

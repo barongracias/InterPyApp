@@ -968,7 +968,7 @@ export default function Home() {
               {trainResult.plots && trainResult.plots.length > 0 && (
                 <div className="space-y-6">
                   {trainResult.plots.map((plot: string) => (
-                    <div key={plot} className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+                    <div key={`${plot}-${trainResult.model_type}`} className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
                       <img
                         src={`${backend}/plots/${plot}?k=${plotKey}`}
                         alt={plot}

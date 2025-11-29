@@ -1,1 +1,0 @@
-{"hidden_sizes": [32, 16], "Lambda": 0.01, "epochs_configured": 98, "epochs_run": 98, "best_epoch": 97, "best_val_rmse": 0.09690511971712112, "best_train_rmse": 0.1001109778881073, "baseline_rmse": 0.5304369240501372, "final_train_r2": -11.462546611421539, "final_val_r2": -10.796667744536292, "early_stop_patience": 20, "lr_decay": 0.98, "seed": 42}

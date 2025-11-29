@@ -15,8 +15,7 @@ matplotlib.use("Agg")
 from .logger import get_console_logger
 from .utils import log_call, timer
 from .tf_model import build_tf_model
-from interpy_bg.plotter import plot_loss, plot_predictions
-
+from .plotter import plot_loss, plot_predictions
 
 class TrainerTF:
     """
@@ -95,6 +94,15 @@ class TrainerTF:
             loss="mse",
             metrics=[tf.keras.metrics.RootMeanSquaredError(name="rmse")],
         )
+
+    @log_call
+    def _save_norm_vals(self, mean: np.ndarray, std: np.ndarray, filename: str = "normalisation_values_tf.npz") -> str:
+        """
+        Persist normalisation statistics for later inference.
+        """
+        path = os.path.join(self.directory, filename)
+        np.savez(path, mean=mean, std=std)
+        return path
 
     @staticmethod
     def load_raw_data(pkl_path: str) -> Tuple[np.ndarray, np.ndarray]:
@@ -248,7 +256,6 @@ class TrainerTF:
         val_rmse = [float(v) for v in history.history.get("val_rmse", [])]
 
         # plots (use best weights if early stopping restored)
-        y_pred_train = self.model.predict(X_train, verbose=0)
         y_pred_val = self.model.predict(X_val, verbose=0)
         plot_loss(train_rmse, val_rmse, "rmse_vs_epochs_tf.png", self.directory)
         plot_predictions(y_val, y_pred_val, "ytrue_vs_ypred_tf.png", self.directory)

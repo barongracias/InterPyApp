@@ -129,9 +129,9 @@ path = synthetic_5d_pickle("outputs/synth.pkl", n=1000, seed=42)
 ## Notes
 
 - NumPy training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture, Lambda, activation/init, batch/clip/seed, best metrics incl. R²) into `backend/outputs/` (when running via the API).
-- TensorFlow training (set `model_type=tf` on `/train`) writes `model_tf.keras`, `normalisation_values_tf.npz`, plots, and `tf_model_metadata.json` into the same `backend/outputs/`.
+- TensorFlow training (set `model_type=tf` on `/train`) writes `model_tf.keras`, `normalisation_values_tf.npz`, plots, and `tf_model_metadata.json` into `backend/outputs_tf/` (served alongside NumPy artifacts).
 - Prediction (`/predict` or `Tester.predict`) uses the trained architecture/config in metadata; client-supplied hidden sizes or Lambda are ignored. `/predict` also accepts `model_type` to choose NumPy vs TF.
-- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}` (serves NumPy or TF artifacts), and `/evaluate` (prefers NumPy artifacts, falls back to TF if present).
+- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}` (serves NumPy or TF artifacts from their respective output folders), and `/evaluate` (prefers NumPy artifacts, falls back to TF if present).
 - `/reset` clears uploads plus both output folders (`backend/outputs/` and `backend/outputs_tf/`).
 - Plotting uses the headless `Agg` backend in both packages for compatibility with servers/CI.
 

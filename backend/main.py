@@ -252,7 +252,7 @@ async def train_model(
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
 
             trainer_tf = TrainerTF(
-                directory=OUTPUT_DIR,
+                directory=OUTPUT_TF_DIR,
                 hidden_sizes=hidden_sizes_list,
                 Lambda=Lambda,
                 epochs=epochs,
@@ -308,17 +308,11 @@ async def predict(
         if model_type not in {"numpy", "tf"}:
             return JSONResponse(status_code=400, content={"error": "model_type must be 'numpy' or 'tf'."})
 
-        def _load_input_from_file(upload: UploadFile) -> np.ndarray:
+        async def _load_input_from_upload(upload: UploadFile) -> np.ndarray:
             if not upload.filename.endswith(".pkl"):
                 raise ValueError("Only .pkl files are accepted.")
-            tmp_path = os.path.join(UPLOAD_DIR, upload.filename)
-            with open(tmp_path, "wb") as f:
-                f.write(upload.file.read())
-            try:
-                with open(tmp_path, "rb") as f:
-                    payload = pickle.load(f)
-            finally:
-                os.remove(tmp_path)
+            data = await upload.read()
+            payload = pickle.loads(data)
             if isinstance(payload, dict) and "X" in payload:
                 payload = payload["X"]
             X_arr = np.asarray(payload, dtype=float)
@@ -339,14 +333,14 @@ async def predict(
                 from fivedreg.tester_tf import TesterTF
             except Exception as e:
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
-            model_path = os.path.join(OUTPUT_DIR, "model_tf.keras")
-            norm_path = os.path.join(OUTPUT_DIR, "normalisation_values_tf.npz")
+            model_path = os.path.join(OUTPUT_TF_DIR, "model_tf.keras")
+            norm_path = os.path.join(OUTPUT_TF_DIR, "normalisation_values_tf.npz")
             if not (os.path.exists(model_path) and os.path.exists(norm_path)):
                 return JSONResponse(status_code=400, content={"error": "TensorFlow model not trained yet. Train a TF model first."})
-            tester_tf = TesterTF(directory=OUTPUT_DIR)
+            tester_tf = TesterTF(directory=OUTPUT_TF_DIR)
             try:
                 if input_file:
-                    X_arr = _load_input_from_file(input_file)
+                    X_arr = await _load_input_from_upload(input_file)
                 elif input_values:
                     X_arr = _load_input_from_values(input_values)
                 else:
@@ -392,7 +386,7 @@ async def predict(
 
         try:
             if input_file:
-                X_arr = _load_input_from_file(input_file)
+                X_arr = await _load_input_from_upload(input_file)
             elif input_values:
                 X_arr = _load_input_from_values(input_values)
             else:
@@ -409,11 +403,12 @@ async def predict(
 @app.get("/plots/{filename}")
 async def get_plot(filename: str):
     """
-    Serve saved plots from outputs directory.
+    Serve saved plots from outputs directory (NumPy) or outputs_tf (TF).
     """
-    plot_path = os.path.join(OUTPUT_DIR, filename)
-    if os.path.exists(plot_path):
-        return FileResponse(plot_path)
+    for directory in (OUTPUT_DIR, OUTPUT_TF_DIR):
+        plot_path = os.path.join(directory, filename)
+        if os.path.exists(plot_path):
+            return FileResponse(plot_path)
     return JSONResponse(status_code=404, content={"error": f"Plot not found: {filename}"})
 
 @app.get("/artifacts/{filename}")
@@ -423,8 +418,10 @@ async def get_artifact(filename: str):
     """
     if filename not in ALLOWED_ARTIFACTS:
         return JSONResponse(status_code=404, content={"error": f"Artifact not allowed: {filename}"})
-    if os.path.exists(os.path.join(OUTPUT_DIR, filename)):
-        return FileResponse(os.path.join(OUTPUT_DIR, filename))
+    for directory in (OUTPUT_DIR, OUTPUT_TF_DIR):
+        artifact_path = os.path.join(directory, filename)
+        if os.path.exists(artifact_path):
+            return FileResponse(artifact_path)
     return JSONResponse(status_code=404, content={"error": f"Artifact not found: {filename}"})
 
 
@@ -456,12 +453,12 @@ async def evaluate_model(file: UploadFile = File(...)):
                 activation=metadata.get("activation", "sigmoid"),
                 weight_init=metadata.get("weight_init", "auto"),
             )
-        elif os.path.exists(os.path.join(OUTPUT_DIR, "model_tf.keras")):
+        elif os.path.exists(os.path.join(OUTPUT_TF_DIR, "model_tf.keras")):
             try:
                 from fivedreg.tester_tf import TesterTF
             except Exception as e:
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
-            tester = TesterTF(directory=OUTPUT_DIR)
+            tester = TesterTF(directory=OUTPUT_TF_DIR)
             model_type = "tf"
         else:
             return JSONResponse(status_code=400, content={"error": "Model not trained yet. Train before evaluating."})

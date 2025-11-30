@@ -27,6 +27,7 @@ def plot_loss(train_loss: list[float],
     
     if directory is None:
         directory = os.getcwd()
+    os.environ.setdefault("MPLCONFIGDIR", os.path.join(directory, ".mplcache"))
     logger = get_console_logger(__name__, os.path.join(directory, "logs"))
     logger.setLevel("INFO")
     
@@ -74,6 +75,7 @@ def plot_predictions(y_true: list[float],
     
     if directory is None:
         directory = os.getcwd()
+    os.environ.setdefault("MPLCONFIGDIR", os.path.join(directory, ".mplcache"))
     logger = get_console_logger(__name__, os.path.join(directory, "logs"))
     logger.setLevel("INFO")
     

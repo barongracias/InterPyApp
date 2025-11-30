@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Upload, Settings, Zap, BarChart3, Sparkles, CheckCircle, Loader } from "lucide-react";
 
 type DatasetStats = {
@@ -225,6 +225,7 @@ export default function Home() {
   const formatArray = (vals: number[]) => vals.map((v) => formatNumber(v)).join(", ");
   const flattenPreds = (preds: Predictions) =>
     Array.isArray(preds) ? preds.flat().filter((v): v is number => typeof v === "number" && Number.isFinite(v)) : [];
+  const flatPreds = useMemo(() => flattenPreds(predictions), [predictions]);
 
   const handleReset = async () => {
     try {
@@ -1187,18 +1188,18 @@ export default function Home() {
                 {predictions && (
                   <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl">
                     <p className="text-sm font-semibold text-purple-700 mb-2">
-                      Predicted Outputs ({flattenPreds(predictions).length})
+                      Predicted Outputs ({flatPreds.length})
                     </p>
                     <div className="max-h-48 overflow-auto grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {flattenPreds(predictions).map((val, idx) => (
+                      {flatPreds.map((val, idx) => (
                         <div key={idx} className="px-3 py-2 bg-white border border-purple-100 rounded-lg text-purple-900 font-mono text-sm">
                           #{idx + 1}: {Number(val).toFixed(4)}
                         </div>
                       ))}
                     </div>
-                    {flattenPreds(predictions).length > 0 && (
+                    {flatPreds.length > 0 && (
                       <button
-                        onClick={() => navigator.clipboard.writeText(flattenPreds(predictions).join(", "))}
+                        onClick={() => navigator.clipboard.writeText(flatPreds.join(", "))}
                         className="mt-3 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
                       >
                         Copy all values

@@ -46,6 +46,7 @@ def test_fivedreg_end_to_end(tmp_path):
     assert os.path.exists(out_dir / "normalisation_values_tf.npz")
     assert os.path.exists(out_dir / "rmse_vs_epochs.png")
     assert os.path.exists(out_dir / "ytrue_vs_ypred.png")
+    assert os.path.exists(out_dir / "tf_model_metadata.json")
 
     tester = TesterTF(directory=str(out_dir))
 

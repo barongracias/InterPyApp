@@ -43,6 +43,15 @@ def test_fivedreg_smoke(tmp_path):
     assert os.path.exists(out_dir / "normalisation_values_tf.npz")
     assert os.path.exists(out_dir / "rmse_vs_epochs.png")
     assert os.path.exists(out_dir / "ytrue_vs_ypred.png")
+    meta_path = out_dir / "tf_model_metadata.json"
+    assert os.path.exists(meta_path)
+    # metadata sanity: best_epoch and final metrics present
+    import json
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    assert meta.get("best_epoch") is None or meta["best_epoch"] >= 1
+    assert meta.get("best_val_rmse") is None or meta["best_val_rmse"] >= 0
+    assert meta.get("model_type") == "tf"
 
     tester = TesterTF(directory=str(out_dir))
     X_test, _ = synthetic_5d(3, seed=9999)

@@ -8,6 +8,14 @@ TensorFlow/Keras implementation of the 5D → 1D regressor, mirroring the numpy-
 - `tester_tf.py`: `TesterTF` loads the saved TF model and normalisation stats to make predictions on NumPy arrays or .pkl files.
 - `logger.py`, `utils.py`: lightweight logging and decorators (independent from `interpy_bg`).
 
+## Installation (package)
+From this `backend/fivedreg` directory:
+```bash
+pip install .
+```
+
+Headless environments: plotting is configured with the `Agg` backend, so no display is required.
+
 ## Usage
 ```python
 from fivedreg.trainer_tf import TrainerTF
@@ -35,6 +43,7 @@ y_pred = tester.predict([0.1, 0.2, 0.3, 0.4, 0.5])
 ```
 
 Note: Ensure TensorFlow is installed in your environment to use this package. Training also saves plots (`rmse_vs_epochs.png`, `ytrue_vs_ypred.png`) to the `directory`.
+Metadata (`tf_model_metadata.json`) now includes hidden sizes, Lambda, epochs run, best epoch, best train/val RMSE, baseline RMSE, and final train/val R².
 
 ### FastAPI usage
 - `/train` supports `model_type=tf` to train and save TF artifacts into `backend/outputs/` (including TF plots) when running the API.

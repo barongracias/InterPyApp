@@ -70,9 +70,19 @@ export default function Home() {
   const [uploadHistory, setUploadHistory] = useState<string[]>([]);
   const [modelType, setModelType] = useState<"numpy" | "tf">("numpy");
   const [plotKey, setPlotKey] = useState<number>(Date.now());
+  const [showNetworkOptions, setShowNetworkOptions] = useState(false);
+  const [showTrainingOptions, setShowTrainingOptions] = useState(false);
 
   const backend = "http://localhost:8000";
   const backendAvailable = healthStatus === "ok";
+
+  const filterArtifacts = (artifacts: string[] | undefined, modelType: "numpy" | "tf" | undefined) => {
+    if (!artifacts) return [];
+    if (modelType === "tf") {
+      return artifacts.filter((name) => name.includes("tf"));
+    }
+    return artifacts.filter((name) => !name.includes("tf"));
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
@@ -213,6 +223,8 @@ export default function Home() {
 
   const formatNumber = (val: number) => Number(val).toFixed(4);
   const formatArray = (vals: number[]) => vals.map((v) => formatNumber(v)).join(", ");
+  const flattenPreds = (preds: Predictions) =>
+    Array.isArray(preds) ? preds.flat().filter((v): v is number => typeof v === "number" && Number.isFinite(v)) : [];
 
   const handleReset = async () => {
     try {
@@ -380,7 +392,7 @@ export default function Home() {
             </div>
           )}
           <div className="flex items-center justify-center space-x-2 mb-4">
-            {[1, 2, 3, 4, 5].map((s) => (
+            {[1, 2, 3, 4, 5, 6].map((s) => (
               <div key={s} className="flex items-center">
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 ${
@@ -391,7 +403,7 @@ export default function Home() {
                 >
                   {s}
                 </div>
-                {s < 5 && (
+                {s < 6 && (
                   <div
                     className={`w-12 h-1 transition-all duration-300 ${
                       step > s ? "bg-indigo-600" : "bg-gray-200"
@@ -541,11 +553,22 @@ export default function Home() {
         {step === 3 && (
           <div className="animate-fade-in">
             <div className="bg-white rounded-3xl shadow-2xl p-10 border border-gray-100">
-              <div className="flex items-center mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mr-4">
-                  <Settings className="w-6 h-6 text-white" />
+              <div className="flex items-center mb-6 justify-between">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mr-4">
+                    <Settings className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold text-gray-800">Configure Network</h2>
+                    <p className="text-sm text-gray-600">Stick with sensible defaults or expand to customise architecture.</p>
+                  </div>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800">Configure Network</h2>
+                <button
+                  onClick={() => setShowNetworkOptions((v) => !v)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-semibold transition-all"
+                >
+                  {showNetworkOptions ? "Hide options" : "Customise"}
+                </button>
               </div>
 
               <div className="flex gap-3 mb-6">
@@ -565,7 +588,6 @@ export default function Home() {
                     setLearningRate("0.0015");
                     setBatchSize("64");
                     setGradClip("5");
-                    setHiddenSizes("64,32,16");
                   }}
                   className={`flex-1 px-4 py-3 rounded-xl font-semibold transition-all ${
                     modelType === "tf"
@@ -577,84 +599,113 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Hidden Layer Sizes
-                  </label>
-                  <input
-                    type="text"
-                    value={hiddenSizes}
-                    onChange={(e) => setHiddenSizes(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                    placeholder="e.g., 16,8"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Comma-separated positive integers (default: 16,8)</p>
-                  {!hiddenSizesValid && <p className="text-xs text-red-600 mt-1">Enter at least one integer layer size.</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Lambda (Regularization)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    value={Lambda}
-                    onChange={(e) => setLambda(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                    placeholder="e.g., 0.01"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Regularization strength (default: 0.01)</p>
-                  {!isPositiveNumber(Lambda) && <p className="text-xs text-red-600 mt-1">Must be a positive number.</p>}
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-4">
+              {showNetworkOptions ? (
+                <div className="space-y-5">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Activation
+                      Hidden Layer Sizes
                     </label>
-                    <select
-                      value={activation}
-                      onChange={(e) => setActivation(e.target.value)}
+                    <input
+                      type="text"
+                      value={hiddenSizes}
+                      onChange={(e) => setHiddenSizes(e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                    >
-                      <option value="relu">ReLU</option>
-                      <option value="leakyrelu">LeakyReLU</option>
-                      <option value="tanh">tanh</option>
-                      <option value="sigmoid">sigmoid</option>
-                    </select>
-                    {!activationValid && <p className="text-xs text-red-600 mt-1">Choose a valid activation.</p>}
+                      placeholder="e.g., 16,8"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Comma-separated positive integers (default: 16,8)</p>
+                    {!hiddenSizesValid && <p className="text-xs text-red-600 mt-1">Enter at least one integer layer size.</p>}
                   </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Weight Init
-                    </label>
-                    <select
-                      value={weightInit}
-                      onChange={(e) => setWeightInit(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                    >
-                      <option value="auto">auto</option>
-                      <option value="he">he</option>
-                      <option value="xavier">xavier</option>
-                    </select>
-                    {!weightInitValid && <p className="text-xs text-red-600 mt-1">Choose a valid init.</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Seed (optional)
+                      Lambda (Regularization)
                     </label>
                     <input
                       type="number"
-                      value={seed}
-                      onChange={(e) => setSeed(e.target.value)}
+                      step="0.001"
+                      value={Lambda}
+                      onChange={(e) => setLambda(e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                      placeholder="e.g., 42"
+                      placeholder="e.g., 0.01"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Regularization strength (default: 0.01)</p>
+                    {!isPositiveNumber(Lambda) && <p className="text-xs text-red-600 mt-1">Must be a positive number.</p>}
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Activation
+                      </label>
+                      <select
+                        value={activation}
+                        onChange={(e) => setActivation(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                      >
+                        <option value="relu">ReLU</option>
+                        <option value="leakyrelu">LeakyReLU</option>
+                        <option value="tanh">tanh</option>
+                        <option value="sigmoid">sigmoid</option>
+                      </select>
+                      {!activationValid && <p className="text-xs text-red-600 mt-1">Choose a valid activation.</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Weight Init
+                      </label>
+                      <select
+                        value={weightInit}
+                        onChange={(e) => setWeightInit(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                      >
+                        <option value="auto">auto</option>
+                        <option value="he">he</option>
+                        <option value="xavier">xavier</option>
+                      </select>
+                      {!weightInitValid && <p className="text-xs text-red-600 mt-1">Choose a valid init.</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Seed (optional)
+                      </label>
+                      <input
+                        type="number"
+                        value={seed}
+                        onChange={(e) => setSeed(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                        placeholder="e.g., 42"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-indigo-50 shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Backend</p>
+                    <p className="text-lg font-bold text-gray-900">{modelType === "tf" ? "TensorFlow" : "NumPy"}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Hidden layers</p>
+                    <p className="text-lg font-bold text-gray-900">{hiddenSizes}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Activation</p>
+                    <p className="text-lg font-bold text-gray-900 capitalize">{activation}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Weight init</p>
+                    <p className="text-lg font-bold text-gray-900">{weightInit}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Lambda</p>
+                    <p className="text-lg font-bold text-gray-900">{Lambda}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Seed</p>
+                    <p className="text-lg font-bold text-gray-900">{seed || "None"}</p>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={() => setStep(4)}
@@ -669,186 +720,238 @@ export default function Home() {
         {step === 4 && (
           <div className="animate-fade-in">
             <div className="bg-white rounded-3xl shadow-2xl p-10 border border-gray-100">
-              <div className="flex items-center mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mr-4">
-                  <Zap className="w-6 h-6 text-white" />
+              <div className="flex items-center mb-6 justify-between">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center mr-4">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold text-gray-800">Training Parameters</h2>
+                    <p className="text-sm text-gray-600">Keep defaults or expand to fine-tune.</p>
+                  </div>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800">Training Parameters</h2>
+                <button
+                  onClick={() => setShowTrainingOptions((v) => !v)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-semibold transition-all"
+                >
+                  {showTrainingOptions ? "Hide options" : "Customise"}
+                </button>
               </div>
 
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Epochs
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={epochs}
-                    onChange={(e) => setEpochs(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                    placeholder="500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Number of training iterations (default: 500)</p>
-                  {Number(epochs) <= 0 && <p className="text-xs text-red-600 mt-1">Enter a positive integer.</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Learning Rate
-                  </label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    min={0}
-                    value={learningRate}
-                    onChange={(e) => setLearningRate(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                    placeholder="0.01"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Step size for gradient descent (default: 0.01)</p>
-                  {!isPositiveNumber(learningRate) && <p className="text-xs text-red-600 mt-1">Must be positive.</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Train/Validation Split
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min={0.1}
-                    max={0.9}
-                    value={trainValSplit}
-                    onChange={(e) => setTrainValSplit(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                    placeholder="0.8"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Fraction for training vs validation (default: 0.8)</p>
-                  {!(Number(trainValSplit) > 0 && Number(trainValSplit) < 1) && (
-                    <p className="text-xs text-red-600 mt-1">Use a value between 0 and 1 (e.g., 0.8).</p>
-                  )}
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-4">
+              {showTrainingOptions ? (
+                <div className="space-y-5">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Batch Size
+                      Epochs
                     </label>
                     <input
                       type="number"
                       min={1}
-                      value={batchSize}
-                      onChange={(e) => setBatchSize(e.target.value)}
+                      value={epochs}
+                      onChange={(e) => setEpochs(e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                      placeholder="32"
+                      placeholder="500"
                     />
-                    {!isPositiveIntOrEmpty(batchSize) && <p className="text-xs text-red-600 mt-1">Must be a positive integer.</p>}
+                    <p className="text-xs text-gray-500 mt-1">Number of training iterations (default: 500)</p>
+                    {Number(epochs) <= 0 && <p className="text-xs text-red-600 mt-1">Enter a positive integer.</p>}
                   </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Grad Clip
+                      Learning Rate
+                    </label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      min={0}
+                      value={learningRate}
+                      onChange={(e) => setLearningRate(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                      placeholder="0.01"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Step size for gradient descent (default: 0.01)</p>
+                    {!isPositiveNumber(learningRate) && <p className="text-xs text-red-600 mt-1">Must be positive.</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Train/Validation Split
                     </label>
                     <input
                       type="number"
                       step="0.1"
-                      min={0}
-                      value={gradClip}
-                      onChange={(e) => setGradClip(e.target.value)}
+                      min={0.1}
+                      max={0.9}
+                      value={trainValSplit}
+                      onChange={(e) => setTrainValSplit(e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                      placeholder="5.0"
+                      placeholder="0.8"
                     />
-                    {!isPositiveNumber(gradClip) && <p className="text-xs text-red-600 mt-1">Must be positive.</p>}
+                    <p className="text-xs text-gray-500 mt-1">Fraction for training vs validation (default: 0.8)</p>
+                    {!(Number(trainValSplit) > 0 && Number(trainValSplit) < 1) && (
+                      <p className="text-xs text-red-600 mt-1">Use a value between 0 and 1 (e.g., 0.8).</p>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Learning Rate Decay (optional)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      max={1}
-                      value={lrDecay}
-                      onChange={(e) => setLrDecay(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                      placeholder="0.98"
-                    />
-                    {!lrDecayValid && <p className="text-xs text-red-600 mt-1">Use 0-1 (e.g., 0.98) or leave blank.</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Early Stop Patience
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={earlyStop}
-                      onChange={(e) => setEarlyStop(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                      placeholder="20"
-                    />
-                    {!earlyStopValid && <p className="text-xs text-red-600 mt-1">Must be a positive integer or blank.</p>}
-                  </div>
-                </div>
 
-                <div className="pt-4 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Adam Optimizer Parameters (Optional)</h3>
-                  
-                  <div className="space-y-5">
+                  <div className="grid md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Beta1
+                        Batch Size
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={batchSize}
+                        onChange={(e) => setBatchSize(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                        placeholder="32"
+                      />
+                      {!isPositiveIntOrEmpty(batchSize) && <p className="text-xs text-red-600 mt-1">Must be a positive integer.</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Grad Clip
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        value={gradClip}
+                        onChange={(e) => setGradClip(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                        placeholder="5.0"
+                      />
+                      {!isPositiveNumber(gradClip) && <p className="text-xs text-red-600 mt-1">Must be positive.</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Learning Rate Decay (optional)
                       </label>
                       <input
                         type="number"
                         step="0.01"
                         min={0}
                         max={1}
-                        value={beta1}
-                        onChange={(e) => setBeta1(e.target.value)}
+                        value={lrDecay}
+                        onChange={(e) => setLrDecay(e.target.value)}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                        placeholder="0.9"
+                        placeholder="0.98"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Exponential decay rate for first moment (default: 0.9)</p>
-                      {!(Number(beta1) > 0 && Number(beta1) < 1) && <p className="text-xs text-red-600 mt-1">Keep Beta1 between 0 and 1.</p>}
+                      {!lrDecayValid && <p className="text-xs text-red-600 mt-1">Use 0-1 (e.g., 0.98) or leave blank.</p>}
                     </div>
-
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Beta2
+                        Early Stop Patience
                       </label>
                       <input
                         type="number"
-                        step="0.001"
-                        min={0}
-                        max={1}
-                        value={beta2}
-                        onChange={(e) => setBeta2(e.target.value)}
+                        min={1}
+                        value={earlyStop}
+                        onChange={(e) => setEarlyStop(e.target.value)}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                        placeholder="0.999"
+                        placeholder="20"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Exponential decay rate for second moment (default: 0.999)</p>
-                      {!(Number(beta2) > 0 && Number(beta2) < 1) && <p className="text-xs text-red-600 mt-1">Keep Beta2 between 0 and 1.</p>}
+                      {!earlyStopValid && <p className="text-xs text-red-600 mt-1">Must be a positive integer or blank.</p>}
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Epsilon
-                      </label>
-                      <input
-                        type="text"
-                        value={epsilon}
-                        onChange={(e) => setEpsilon(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
-                        placeholder="1e-8"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Small constant for numerical stability (default: 1e-8)</p>
-                      {!isPositiveNumber(epsilon) && <p className="text-xs text-red-600 mt-1">Must be positive.</p>}
+                  <div className="pt-4 border-t border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Adam Optimizer Parameters (Optional)</h3>
+                    
+                    <div className="space-y-5">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Beta1
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          max={1}
+                          value={beta1}
+                          onChange={(e) => setBeta1(e.target.value)}
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                          placeholder="0.9"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Exponential decay rate for first moment (default: 0.9)</p>
+                        {!(Number(beta1) > 0 && Number(beta1) < 1) && <p className="text-xs text-red-600 mt-1">Keep Beta1 between 0 and 1.</p>}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Beta2
+                        </label>
+                        <input
+                          type="number"
+                          step="0.001"
+                          min={0}
+                          max={1}
+                          value={beta2}
+                          onChange={(e) => setBeta2(e.target.value)}
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                          placeholder="0.999"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Exponential decay rate for second moment (default: 0.999)</p>
+                        {!(Number(beta2) > 0 && Number(beta2) < 1) && <p className="text-xs text-red-600 mt-1">Keep Beta2 between 0 and 1.</p>}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Epsilon
+                        </label>
+                        <input
+                          type="text"
+                          value={epsilon}
+                          onChange={(e) => setEpsilon(e.target.value)}
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none text-gray-900"
+                          placeholder="1e-8"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Small constant for numerical stability (default: 1e-8)</p>
+                        {!isPositiveNumber(epsilon) && <p className="text-xs text-red-600 mt-1">Must be positive.</p>}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-indigo-50 shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Epochs</p>
+                    <p className="text-lg font-bold text-gray-900">{epochs}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Learning rate</p>
+                    <p className="text-lg font-bold text-gray-900">{learningRate}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Train/Val split</p>
+                    <p className="text-lg font-bold text-gray-900">{trainValSplit}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Batch size</p>
+                    <p className="text-lg font-bold text-gray-900">{batchSize || "Full batch"}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Grad clip</p>
+                    <p className="text-lg font-bold text-gray-900">{gradClip}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">LR decay</p>
+                    <p className="text-lg font-bold text-gray-900">{lrDecay || "None"}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Early stop</p>
+                    <p className="text-lg font-bold text-gray-900">{earlyStop || "None"}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Adam β1 / β2</p>
+                    <p className="text-lg font-bold text-gray-900">{beta1} / {beta2}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                    <p className="text-sm font-semibold text-gray-700">Epsilon</p>
+                    <p className="text-lg font-bold text-gray-900">{epsilon}</p>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={handleTrain}
@@ -902,39 +1005,27 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200">
-                  <p className="text-sm font-semibold text-blue-700 mb-1">Train RMSE</p>
-                  <p className="text-3xl font-bold text-blue-900">
-                    {trainResult.train_loss_end.toFixed(4)}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200 space-y-1">
+                  <p className="text-sm font-semibold text-blue-700">Train metrics</p>
+                  <p className="text-xl font-bold text-blue-900">
+                    RMSE: {trainResult.train_loss_end.toFixed(4)}
                   </p>
-                  {trainResult.best_train_rmse !== undefined && trainResult.best_epoch && (
-                    <p className="text-xs text-blue-700 mt-1">
-                      Best: {trainResult.best_train_rmse.toFixed(4)} (epoch {trainResult.best_epoch})
-                    </p>
+                  {trainResult.final_train_r2 !== undefined && (
+                    <p className="text-sm font-semibold text-blue-800">R²: {trainResult.final_train_r2.toFixed(4)}</p>
                   )}
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-2xl border border-purple-200">
-                  <p className="text-sm font-semibold text-purple-700 mb-1">Validation RMSE</p>
-                  <p className="text-3xl font-bold text-purple-900">
-                    {trainResult.val_loss_end.toFixed(4)}
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-2xl border border-purple-200 space-y-1">
+                  <p className="text-sm font-semibold text-purple-700">Validation metrics</p>
+                  <p className="text-xl font-bold text-purple-900">
+                    RMSE: {trainResult.val_loss_end.toFixed(4)}
                   </p>
-                  {trainResult.best_val_rmse !== undefined && trainResult.best_epoch && (
-                    <p className="text-xs text-purple-700 mt-1">
-                      Best: {trainResult.best_val_rmse.toFixed(4)} (epoch {trainResult.best_epoch})
-                    </p>
+                  {trainResult.final_val_r2 !== undefined && (
+                    <p className="text-sm font-semibold text-purple-800">R²: {trainResult.final_val_r2.toFixed(4)}</p>
                   )}
                 </div>
               </div>
 
               <div className="grid md:grid-cols-3 gap-4 mb-8">
-                {trainResult.baseline_rmse !== undefined && (
-                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-2xl border border-amber-200">
-                    <p className="text-sm font-semibold text-amber-700 mb-1">Baseline (mean) RMSE</p>
-                    <p className="text-2xl font-bold text-amber-900">
-                      {trainResult.baseline_rmse.toFixed(4)}
-                    </p>
-                  </div>
-                )}
                 {trainResult.epochs_run !== undefined && (
                   <div className="bg-gradient-to-br from-teal-50 to-teal-100 p-4 rounded-2xl border border-teal-200">
                     <p className="text-sm font-semibold text-teal-700 mb-1">Epochs executed</p>
@@ -945,22 +1036,6 @@ export default function Home() {
                   <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-2xl border border-indigo-200">
                     <p className="text-sm font-semibold text-indigo-700 mb-1">Best epoch</p>
                     <p className="text-2xl font-bold text-indigo-900">{trainResult.best_epoch}</p>
-                  </div>
-                )}
-                {trainResult.final_train_r2 !== undefined && (
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-2xl border border-green-200">
-                    <p className="text-sm font-semibold text-green-700 mb-1">Train R²</p>
-                    <p className="text-2xl font-bold text-green-900">
-                      {trainResult.final_train_r2.toFixed(4)}
-                    </p>
-                  </div>
-                )}
-                {trainResult.final_val_r2 !== undefined && (
-                  <div className="bg-gradient-to-br from-rose-50 to-rose-100 p-4 rounded-2xl border border-rose-200">
-                    <p className="text-sm font-semibold text-rose-700 mb-1">Val R²</p>
-                    <p className="text-2xl font-bold text-rose-900">
-                      {trainResult.final_val_r2.toFixed(4)}
-                    </p>
                   </div>
                 )}
               </div>
@@ -979,11 +1054,11 @@ export default function Home() {
                 </div>
               )}
 
-              {trainResult.artifacts && (
+              {filterArtifacts(trainResult.artifacts, trainResult.model_type as "numpy" | "tf").length > 0 && (
                 <div className="mt-8">
-                  <p className="text-sm font-semibold text-gray-800 mb-2">Artifacts</p>
+                  <p className="text-sm font-semibold text-gray-800 mb-2">Download Model & Weights</p>
                   <div className="grid md:grid-cols-3 gap-3">
-                    {trainResult.artifacts.map((artifact) => (
+                    {filterArtifacts(trainResult.artifacts, trainResult.model_type as "numpy" | "tf").map((artifact) => (
                       <a
                         key={artifact}
                         href={`${backend}/artifacts/${artifact}`}
@@ -998,7 +1073,23 @@ export default function Home() {
             </div>
 
             <div className="bg-white rounded-3xl shadow-2xl p-10 border border-gray-100">
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">🔮 Test Your Model</h3>
+              <div className="flex items-center justify-between">
+                <div className="text-lg text-gray-700">Ready to validate the trained model?</div>
+                <button
+                  onClick={() => setStep(6)}
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-semibold"
+                >
+                  Go to Testing
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 6 && trainResult && (
+          <div className="animate-fade-in space-y-8">
+            <div className="bg-white rounded-3xl shadow-2xl p-10 border border-gray-100">
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">Test Your Model</h3>
               <p className="text-gray-600 mb-6">Choose to upload a pickle file or enter values manually</p>
 
               <div className="flex gap-2 mb-6">
@@ -1095,21 +1186,24 @@ export default function Home() {
 
                 {predictions && (
                   <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl">
-                    <p className="text-sm font-semibold text-purple-700 mb-2">Predicted Output</p>
-                    <div className="flex items-center gap-3">
-                      <p className="text-2xl font-bold text-purple-900 font-mono break-all">
-                        {Number(predictions[0]?.[0] ?? 0).toFixed(4)}
-                      </p>
-                      <button
-                        onClick={() => {
-                          const val = predictions[0]?.[0];
-                          if (val !== undefined) navigator.clipboard.writeText(String(val));
-                        }}
-                        className="px-3 py-1 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
-                      >
-                        Copy
-                      </button>
+                    <p className="text-sm font-semibold text-purple-700 mb-2">
+                      Predicted Outputs ({flattenPreds(predictions).length})
+                    </p>
+                    <div className="max-h-48 overflow-auto grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {flattenPreds(predictions).map((val, idx) => (
+                        <div key={idx} className="px-3 py-2 bg-white border border-purple-100 rounded-lg text-purple-900 font-mono text-sm">
+                          #{idx + 1}: {Number(val).toFixed(4)}
+                        </div>
+                      ))}
                     </div>
+                    {flattenPreds(predictions).length > 0 && (
+                      <button
+                        onClick={() => navigator.clipboard.writeText(flattenPreds(predictions).join(", "))}
+                        className="mt-3 px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                      >
+                        Copy all values
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

@@ -132,12 +132,12 @@ class Trainer(NeuralNetwork):
         if isinstance(data, dict):
             if "X" not in data or "y" not in data:
                 raise ValueError("Pickle dictionary must contain 'X' and 'y' keys")
-            X = np.array(data["X"], dtype=float)
-            y = np.array(data["y"], dtype=float)
+            X = np.array(data["X"], dtype=np.float32)
+            y = np.array(data["y"], dtype=np.float32)
         elif isinstance(data, (tuple, list)) and len(data) == 2:
             # legacy support for tuple/list format (X, y)
-            X = np.array(data[0], dtype=float)
-            y = np.array(data[1], dtype=float)
+            X = np.array(data[0], dtype=np.float32)
+            y = np.array(data[1], dtype=np.float32)
         else:
             raise ValueError("Pickle file must contain a dict with 'X' and 'y', or a tuple/list (X, y)")
 

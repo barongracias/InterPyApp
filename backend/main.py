@@ -17,12 +17,19 @@ from typing import List
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+OUTPUT_TF_DIR = os.path.join(BASE_DIR, "outputs_tf")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
-ALLOWED_ARTIFACTS = {
+ALLOWED_ARTIFACTS_NUMPY = {
     "model_weights.npz",
     "normalisation_values.npz",
     "model_metadata.json",
 }
+ALLOWED_ARTIFACTS_TF = {
+    "model_tf.keras",
+    "normalisation_values_tf.npz",
+    "tf_model_metadata.json",
+}
+ALLOWED_ARTIFACTS = ALLOWED_ARTIFACTS_NUMPY | ALLOWED_ARTIFACTS_TF
 
 def get_app_logger():
     """Return a module-level logger for main app utilities."""
@@ -41,8 +48,8 @@ def get_app_logger():
 app_logger = get_app_logger()
 
 def clear_directories():
-    """Helper to clean uploads and outputs folders."""
-    for d in [UPLOAD_DIR, OUTPUT_DIR]:
+    """Helper to clean uploads and both NumPy/TF outputs folders."""
+    for d in [UPLOAD_DIR, OUTPUT_DIR, OUTPUT_TF_DIR]:
         if os.path.exists(d):
             shutil.rmtree(d)
         os.makedirs(d, exist_ok=True)
@@ -241,7 +248,6 @@ async def train_model(
         else:
             try:
                 from fivedreg.trainer_tf import TrainerTF
-                from fivedreg.tester_tf import TesterTF
             except Exception as e:
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
 
@@ -261,51 +267,6 @@ async def train_model(
 
             train_loss, val_loss = trainer_tf.train(pkl_path)
 
-            # recompute splits deterministically to score metrics
-            splits = Trainer.load_dataset(
-                pkl_path,
-                train_frac=train_val_split,
-                val_frac=1 - train_val_split,
-                test_frac=0.0,
-                random_state=seed,
-            )
-            X_train = splits["X_train"]
-            y_train = splits["y_train"]
-            X_val = splits["X_val"]
-            y_val = splits["y_val"]
-
-            tester_tf = TesterTF(directory=OUTPUT_DIR)
-            y_pred_train = tester_tf.predict(X_train)
-            y_pred_val = tester_tf.predict(X_val)
-
-            train_rmse_end = float(Trainer.calc_rmse(y_train, y_pred_train))
-            val_rmse_end = float(Trainer.calc_rmse(y_val, y_pred_val))
-            train_r2 = Trainer.calc_r2(y_train, y_pred_train)
-            val_r2 = Trainer.calc_r2(y_val, y_pred_val)
-            baseline_rmse = float(Trainer.calc_rmse(y_train, np.full_like(y_train, y_train.mean())))
-            best_epoch = int(np.argmin(val_loss) + 1) if val_loss else None
-
-            # save TF metadata
-            tf_metadata = {
-                "hidden_sizes": hidden_sizes_list,
-                "Lambda": Lambda,
-                "epochs_configured": epochs,
-                "epochs_run": len(train_loss),
-                "best_epoch": best_epoch,
-                "best_val_rmse": float(min(val_loss)) if val_loss else None,
-                "best_train_rmse": float(min(train_loss)) if train_loss else None,
-                "baseline_rmse": baseline_rmse,
-                "final_train_r2": train_r2,
-                "final_val_r2": val_r2,
-                "early_stop_patience": early_stop_patience,
-                "lr_decay": lr_decay,
-                "seed": seed,
-                "model_type": "tf",
-            }
-            meta_path = os.path.join(OUTPUT_DIR, "tf_model_metadata.json")
-            with open(meta_path, "w", encoding="utf-8") as f:
-                json.dump(tf_metadata, f)
-
             return {
                 "message": "Training completed successfully.",
                 "model_type": "tf",
@@ -313,13 +274,13 @@ async def train_model(
                 "train_loss_end": train_loss[-1] if train_loss else None,
                 "val_loss_start": val_loss[0] if val_loss else None,
                 "val_loss_end": val_loss[-1] if val_loss else None,
-                "best_val_rmse": float(min(val_loss)) if val_loss else None,
-                "best_train_rmse": float(min(train_loss)) if train_loss else None,
-                "best_epoch": best_epoch,
+                "best_val_rmse": trainer_tf.best_val_rmse,
+                "best_train_rmse": trainer_tf.best_train_rmse,
+                "best_epoch": trainer_tf.best_epoch,
                 "epochs_run": len(train_loss),
-                "baseline_rmse": baseline_rmse,
-                "final_train_r2": train_r2,
-                "final_val_r2": val_r2,
+                "baseline_rmse": trainer_tf.baseline_rmse,
+                "final_train_r2": trainer_tf.final_train_r2,
+                "final_val_r2": trainer_tf.final_val_r2,
                 "plots": ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"],
                 "artifacts": ["model_tf.keras", "normalisation_values_tf.npz", "tf_model_metadata.json"],
             }
@@ -343,36 +304,63 @@ async def predict(
       - Comma-separated input values (5 floats)
     """
     try:
-        # load trained metadata to ensure architecture matches saved weights
-        metadata = Tester.load_metadata(directory=OUTPUT_DIR)
         model_type = model_type.lower()
         if model_type not in {"numpy", "tf"}:
             return JSONResponse(status_code=400, content={"error": "model_type must be 'numpy' or 'tf'."})
+
+        def _load_input_from_file(upload: UploadFile) -> np.ndarray:
+            if not upload.filename.endswith(".pkl"):
+                raise ValueError("Only .pkl files are accepted.")
+            tmp_path = os.path.join(UPLOAD_DIR, upload.filename)
+            with open(tmp_path, "wb") as f:
+                f.write(upload.file.read())
+            try:
+                with open(tmp_path, "rb") as f:
+                    payload = pickle.load(f)
+            finally:
+                os.remove(tmp_path)
+            if isinstance(payload, dict) and "X" in payload:
+                payload = payload["X"]
+            X_arr = np.asarray(payload, dtype=float)
+            if X_arr.ndim == 1:
+                X_arr = X_arr.reshape(1, -1)
+            if X_arr.shape[1] != 5:
+                raise ValueError(f"Input must have exactly 5 features; got shape {X_arr.shape}")
+            return X_arr
+
+        def _load_input_from_values(values_str: str) -> np.ndarray:
+            vals = np.array([float(x.strip()) for x in values_str.split(",")], dtype=float)
+            if vals.size != 5:
+                raise ValueError("Input must contain exactly 5 comma-separated values.")
+            return vals.reshape(1, -1)
 
         if model_type == "tf":
             try:
                 from fivedreg.tester_tf import TesterTF
             except Exception as e:
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
+            model_path = os.path.join(OUTPUT_DIR, "model_tf.keras")
+            norm_path = os.path.join(OUTPUT_DIR, "normalisation_values_tf.npz")
+            if not (os.path.exists(model_path) and os.path.exists(norm_path)):
+                return JSONResponse(status_code=400, content={"error": "TensorFlow model not trained yet. Train a TF model first."})
             tester_tf = TesterTF(directory=OUTPUT_DIR)
-
-            if input_file:
-                if not input_file.filename.endswith(".pkl"):
-                    return JSONResponse(status_code=400, content={"error": "Only .pkl files are accepted."})
-                file_path = os.path.join(UPLOAD_DIR, input_file.filename)
-                with open(file_path, "wb") as f:
-                    f.write(await input_file.read())
-                y_pred = tester_tf.predict(file_path)
-                os.remove(file_path)
-            elif input_values:
-                values = np.array([[float(x.strip()) for x in input_values.split(",")]], dtype=float)
-                if values.shape != (1, 5):
-                    return JSONResponse(status_code=400, content={"error": "Input must contain exactly 5 values."})
-                y_pred = tester_tf.predict(values)
-            else:
-                return JSONResponse(status_code=400, content={"error": "Provide either a .pkl file or input values."})
-
+            try:
+                if input_file:
+                    X_arr = _load_input_from_file(input_file)
+                elif input_values:
+                    X_arr = _load_input_from_values(input_values)
+                else:
+                    return JSONResponse(status_code=400, content={"error": "Provide either a .pkl file or input values."})
+            except ValueError as e:
+                return JSONResponse(status_code=400, content={"error": str(e)})
+            y_pred = tester_tf.predict(X_arr)
             return {"y_pred": y_pred.tolist(), "model_type": "tf"}
+
+        # NumPy model path
+        try:
+            metadata = Tester.load_metadata(directory=OUTPUT_DIR)
+        except FileNotFoundError:
+            return JSONResponse(status_code=400, content={"error": "Model not trained yet. Train a NumPy model first or set model_type=tf."})
 
         trained_hidden_sizes = metadata.get("hidden_sizes")
         trained_lambda = metadata.get("Lambda")
@@ -402,26 +390,17 @@ async def predict(
             weight_init=metadata.get("weight_init", "auto"),
         )
 
-        if input_file:
-            if not input_file.filename.endswith(".pkl"):
-                return JSONResponse(status_code=400, content={"error": "Only .pkl files are accepted."})
+        try:
+            if input_file:
+                X_arr = _load_input_from_file(input_file)
+            elif input_values:
+                X_arr = _load_input_from_values(input_values)
+            else:
+                return JSONResponse(status_code=400, content={"error": "Provide either a .pkl file or input values."})
+        except ValueError as e:
+            return JSONResponse(status_code=400, content={"error": str(e)})
 
-            file_path = os.path.join(UPLOAD_DIR, input_file.filename)
-            with open(file_path, "wb") as f:
-                f.write(await input_file.read())
-
-            y_pred = tester.predict(file_path)
-            os.remove(file_path)
-
-        elif input_values:
-            values = np.array([[float(x.strip()) for x in input_values.split(",")]], dtype=float)
-            if values.shape != (1, 5):
-                return JSONResponse(status_code=400, content={"error": "Input must contain exactly 5 values."})
-            y_pred = tester.predict(values)
-
-        else:
-            return JSONResponse(status_code=400, content={"error": "Provide either a .pkl file or input values."})
-
+        y_pred = tester.predict(X_arr)
         return {"y_pred": y_pred.tolist()}
 
     except Exception as e:
@@ -442,10 +421,9 @@ async def get_artifact(filename: str):
     """
     Serve saved artifacts (weights, norm values, metadata).
     """
-    allowed = ALLOWED_ARTIFACTS
-    if filename not in allowed:
+    if filename not in ALLOWED_ARTIFACTS:
         return JSONResponse(status_code=404, content={"error": f"Artifact not allowed: {filename}"})
-    if filename in ALLOWED_ARTIFACTS and os.path.exists(os.path.join(OUTPUT_DIR, filename)):
+    if os.path.exists(os.path.join(OUTPUT_DIR, filename)):
         return FileResponse(os.path.join(OUTPUT_DIR, filename))
     return JSONResponse(status_code=404, content={"error": f"Artifact not found: {filename}"})
 
@@ -491,7 +469,7 @@ async def evaluate_model(file: UploadFile = File(...)):
         # load data to get y
         X, y = Trainer.load_raw_data(temp_path)
         y = y.reshape(-1, 1)
-        y_pred = tester.predict(temp_path)
+        y_pred = tester.predict(X)
         rmse = float(Trainer.calc_rmse(y, y_pred))
         os.remove(temp_path)
         return {"rmse": rmse, "samples": int(len(y)), "model_type": model_type}
@@ -501,11 +479,11 @@ async def evaluate_model(file: UploadFile = File(...)):
 @app.post("/reset")
 async def reset_directories():
     """
-    Clears all uploaded files and generated outputs (plots, models, etc.).
+    Clears all uploaded files and generated outputs (plots, models, etc.) for both NumPy and TF backends.
     """
     try:
         # Remove and recreate both directories
-        for directory in [UPLOAD_DIR, OUTPUT_DIR]:
+        for directory in [UPLOAD_DIR, OUTPUT_DIR, OUTPUT_TF_DIR]:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
             os.makedirs(directory, exist_ok=True)

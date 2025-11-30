@@ -3,6 +3,7 @@
 # ------------------
 backend/uploads/
 backend/outputs/
+backend/outputs_tf/
 backend/pydoc-markdown.yml
 backend/docs/_build/
 backend/docs/_autosummary/

@@ -49,3 +49,7 @@ y_pred = tester.predict(data["X"])
 ```
 
 Artifacts: `model_weights.npz`, `normalisation_values.npz`, `model_metadata.json`, `rmse_vs_epochs.png`, `ytrue_vs_ypred.png`. Metadata includes architecture, regularisation, activation/init, batch/clip/seed, best metrics, and R². You can serve artifacts via the FastAPI `/artifacts` and `/plots` endpoints. For TensorFlow outputs (same directory/plots with `_tf` suffix), see `backend/fivedreg/README.md`.
+
+Notes:
+- Plotting uses the headless `Agg` backend for compatibility with servers/CI.
+- `Trainer.load_raw_data` loads X/y as `float32` by default (suitable for NumPy and TF interop).

@@ -1,7 +1,11 @@
 # plots for fivedreg (TensorFlow backend)
 import os
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+
+# headless-friendly backend
+matplotlib.use("Agg")
 
 from .logger import get_console_logger
 

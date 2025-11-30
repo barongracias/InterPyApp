@@ -1,7 +1,11 @@
 # imports
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import os
+
+# headless-friendly backend
+matplotlib.use("Agg")
 
 # local imports
 from .logger import get_console_logger

@@ -3,15 +3,11 @@ from __future__ import annotations
 
 import os
 import pickle
+import json
 from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 import tensorflow as tf
-import matplotlib
-
-# ensure headless plotting
-matplotlib.use("Agg")
-
 from .logger import get_console_logger
 from .utils import log_call, timer
 from .tf_model import build_tf_model
@@ -71,6 +67,12 @@ class TrainerTF:
         self.lr_decay_patience = lr_decay_patience
         self.batch_size = batch_size
         self.grad_clip = grad_clip
+        self.best_epoch: Optional[int] = None
+        self.best_val_rmse: Optional[float] = None
+        self.best_train_rmse: Optional[float] = None
+        self.baseline_rmse: Optional[float] = None
+        self.final_train_r2: Optional[float] = None
+        self.final_val_r2: Optional[float] = None
 
         os.makedirs(self.directory, exist_ok=True)
         self.logger = get_console_logger(__name__, os.path.join(self.directory, "logs"))
@@ -105,6 +107,24 @@ class TrainerTF:
         return path
 
     @staticmethod
+    def calc_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        return float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
+
+    @staticmethod
+    def calc_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        ss_res = np.sum((y_true - y_pred) ** 2)
+        ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+        return float(1 - ss_res / ss_tot) if ss_tot != 0 else float("nan")
+
+    def _save_metadata(self, metadata: dict, filename: str = "tf_model_metadata.json") -> None:
+        """
+        Save TF training metadata (architecture, metrics) to JSON.
+        """
+        path = os.path.join(self.directory, filename)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f)
+
+    @staticmethod
     def load_raw_data(pkl_path: str) -> Tuple[np.ndarray, np.ndarray]:
         """
         Load and validate raw X, y arrays from pickle. Imputes NaNs with column means.
@@ -120,11 +140,11 @@ class TrainerTF:
         if isinstance(data, dict):
             if "X" not in data or "y" not in data:
                 raise ValueError("Pickle dictionary must contain 'X' and 'y' keys")
-            X = np.array(data["X"], dtype=float)
-            y = np.array(data["y"], dtype=float)
+            X = np.array(data["X"], dtype=np.float32)
+            y = np.array(data["y"], dtype=np.float32)
         elif isinstance(data, (tuple, list)) and len(data) == 2:
-            X = np.array(data[0], dtype=float)
-            y = np.array(data[1], dtype=float)
+            X = np.array(data[0], dtype=np.float32)
+            y = np.array(data[1], dtype=np.float32)
         else:
             raise ValueError("Pickle file must contain a dict with 'X' and 'y', or a tuple/list (X, y)")
 
@@ -225,15 +245,15 @@ class TrainerTF:
         splits = TrainerTF.load_dataset(
             pkl_path,
             train_frac=self.train_val_split,
-            val_frac=1 - self.train_val_split,
+            val_frac=1-self.train_val_split,
             test_frac=0.0,
             random_state=self.seed,
         )
 
         X_train = splits["X_train"]
-        y_train = splits["y_train"]
+        y_train = splits["y_train"].astype(np.float32)
         X_val = splits["X_val"]
-        y_val = splits["y_val"]
+        y_val = splits["y_val"].astype(np.float32)
         mean = splits["mean"]
         std = splits["std"]
 
@@ -259,6 +279,37 @@ class TrainerTF:
         y_pred_val = self.model.predict(X_val, verbose=0)
         plot_loss(train_rmse, val_rmse, "rmse_vs_epochs.png", self.directory)
         plot_predictions(y_val, y_pred_val, "ytrue_vs_ypred.png", self.directory)
+
+        # metrics and metadata
+        self.best_epoch = int(np.argmin(val_rmse) + 1) if val_rmse else None
+        self.best_val_rmse = float(np.min(val_rmse)) if val_rmse else None
+        self.best_train_rmse = (
+            float(train_rmse[self.best_epoch - 1]) if self.best_epoch and train_rmse else (float(train_rmse[-1]) if train_rmse else None)
+        )
+        baseline_pred = np.full_like(y_train, np.mean(y_train))
+        self.baseline_rmse = self.calc_rmse(y_train, baseline_pred)
+
+        y_pred_train = self.model.predict(X_train, verbose=0)
+        self.final_train_r2 = self.calc_r2(y_train, y_pred_train)
+        self.final_val_r2 = self.calc_r2(y_val, y_pred_val)
+
+        tf_metadata = {
+            "hidden_sizes": self.hidden_sizes,
+            "Lambda": self.Lambda,
+            "epochs_configured": self.epochs,
+            "epochs_run": len(train_rmse),
+            "best_epoch": self.best_epoch,
+            "best_val_rmse": self.best_val_rmse,
+            "best_train_rmse": self.best_train_rmse,
+            "baseline_rmse": self.baseline_rmse,
+            "final_train_r2": self.final_train_r2,
+            "final_val_r2": self.final_val_r2,
+            "early_stop_patience": self.early_stop_patience,
+            "lr_decay": self.lr_decay,
+            "seed": self.seed,
+            "model_type": "tf",
+        }
+        self._save_metadata(tf_metadata)
 
         return train_rmse, val_rmse
 

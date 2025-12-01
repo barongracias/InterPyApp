@@ -33,6 +33,8 @@ def test_pipeline():
     with open(train_pkl_path, "wb") as f:
         pickle.dump({"X": X_train, "y": y_train}, f)
 
+    pkl_path = None
+
     try:
         # train the network
         trainer = Trainer(
@@ -91,7 +93,7 @@ def test_pipeline():
         # clean up temporary pickle files
         if os.path.exists(train_pkl_path):
             os.remove(train_pkl_path)
-        if os.path.exists(pkl_path):
+        if pkl_path and os.path.exists(pkl_path):
             os.remove(pkl_path)
 
     print("🎉 Full pipeline test passed successfully.")

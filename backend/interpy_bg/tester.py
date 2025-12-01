@@ -10,6 +10,7 @@ from .logger import get_console_logger
 from .utils import timer, log_call
 
 class Tester(NeuralNetwork):
+    __test__ = False  # prevent pytest from collecting this as a test class
     """
     Tester class for trained feedforward neural network. Loads model weights and normalisation values, applies normalisation,
     and calculates predicted outputs for given test inputs.

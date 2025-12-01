@@ -13,6 +13,7 @@ from .utils import log_call, timer
 
 
 class TesterTF:
+    __test__ = False  # prevent pytest from collecting this as a test class
     """
     TensorFlow tester for the 5D→1D regressor. Loads saved Keras model and normalisation stats.
     """

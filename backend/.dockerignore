@@ -1,0 +1,17 @@
+__pycache__
+.pytest_cache
+.venv
+dist
+build
+*.pyc
+*.pyo
+*.pyd
+.git
+.gitignore
+.DS_Store
+.python-version
+outputs
+outputs_tf
+uploads
+docs/_build
+docs/_autosummary

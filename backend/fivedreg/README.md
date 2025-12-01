@@ -17,6 +17,14 @@ pip install .
 
 Headless environments: plotting is configured with the `Agg` backend, so no display is required.
 
+Docker (whole app):
+
+```bash
+cd ../..
+./scripts/docker_build.sh
+./scripts/docker_up.sh   # backend on :8000 (includes TF if built with fivedreg)
+```
+
 ## Usage
 ```python
 from fivedreg.trainer_tf import TrainerTF

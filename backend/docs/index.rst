@@ -44,6 +44,14 @@ Key endpoints:
 - `/train` and `/predict` support `model_type` of `numpy` or `tf`.
 - `/upload`, `/plots/{filename}`, `/artifacts/{filename}`, `/reset`.
 
+Docker quick start
+------------------
+
+.. code-block:: bash
+
+    ./scripts/docker_build.sh
+    ./scripts/docker_up.sh   # backend on :8000, frontend on :3000
+
 Package quick start
 -------------------
 
@@ -85,7 +93,7 @@ Contents
    :caption: Package Contents:
 
    interpy_bg
-    fivedreg
+   fivedreg
    interpy_synth
    modules
 

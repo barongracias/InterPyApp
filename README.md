@@ -48,6 +48,12 @@ npm run dev          # http://localhost:3000
 - Backend: `pytest backend/tests tests`
 - Frontend: `npm run lint` (add your test script if present)
 
+## Docker
+- Build images: `./scripts/docker_build.sh`
+- Run stack: `./scripts/docker_up.sh` (backend on :8000, frontend on :3000)
+- Stop stack: `./scripts/docker_down.sh`
+- Compose file: `docker-compose.yml`
+
 ## Packaging (PyPI)
 Run from each package directory:
 

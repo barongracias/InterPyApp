@@ -8,8 +8,7 @@ NumPy implementation of the 5D → 1D regressor with a simple training/testing A
 - `tester.py`: loads saved weights/norm stats to run predictions.
 - `plotter.py`: loss/prediction plots.
 - `logger.py`, `utils.py`: logging and helpers.
-- Synthetic data generator is provided by the `interpy_synth` package.
-- Synthetic data generator is provided by the separate `interpy_synth` package (dependency).
+- Synthetic data generator is provided by the `interpy_synth` package (dependency).
 
 ## Usage
 ```python
@@ -50,6 +49,15 @@ y_pred = tester.predict(data["X"])
 ```
 
 Artifacts: `model_weights.npz`, `normalisation_values.npz`, `model_metadata.json`, `rmse_vs_epochs.png`, `ytrue_vs_ypred.png`. Metadata includes architecture, regularisation, activation/init, batch/clip/seed, best metrics, and R². You can serve artifacts via the FastAPI `/artifacts` and `/plots` endpoints.
+
+Docker (whole app):
+
+```bash
+cd ../..
+./scripts/docker_build.sh
+./scripts/docker_up.sh   # backend on :8000
+# ./scripts/docker_down.sh to stop
+```
 
 Notes:
 - Plotting uses the headless `Agg` backend for compatibility with servers/CI.

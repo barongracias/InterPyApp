@@ -30,6 +30,15 @@ pip install interpy_bg         # NumPy backend (pulls interpy-synth)
 pip install fivedreg           # TF backend (pulls interpy-synth + tensorflow)
 ```
 
+Docker:
+
+```bash
+cd ..
+./scripts/docker_build.sh
+./scripts/docker_up.sh   # backend on :8000
+# ./scripts/docker_down.sh to stop
+```
+
 ## Quick Start
 
 ### Training a model

@@ -73,7 +73,7 @@ export default function Home() {
   const [showNetworkOptions, setShowNetworkOptions] = useState(false);
   const [showTrainingOptions, setShowTrainingOptions] = useState(false);
 
-  const backend = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const backend = useMemo(() => process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000", []);
   const backendAvailable = healthStatus === "ok";
 
   const filterArtifacts = (artifacts: string[] | undefined, modelType: "numpy" | "tf" | undefined) => {

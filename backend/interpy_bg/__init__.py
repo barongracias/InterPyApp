@@ -1,3 +1,5 @@
+"""Public interface for the NumPy-based 5D->1 interpolator package."""
+
 from .trainer import Trainer
 from .tester import Tester
 from .neural_network import NeuralNetwork

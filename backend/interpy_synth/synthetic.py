@@ -1,3 +1,5 @@
+"""Synthetic data generators for 5D->1 interpolation experiments."""
+
 # imports
 import os
 import math
@@ -10,14 +12,15 @@ import numpy as np
 
 def synthetic_5d(n: int, seed: int | None = None) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Generate synthetic 5D inputs and a smooth target with noise.
+    Generate synthetic 5D inputs and a smooth target surface with noise.
 
     Args:
-        n (int): Number of samples.
-        seed (int | None): Optional RNG seed.
+        n (int): Number of samples to generate.
+        seed (int | None): Optional RNG seed for reproducibility.
 
     Returns:
-        tuple: (X, y) arrays of type float32 with shapes (n, 5) and (n, 1).
+        tuple[np.ndarray, np.ndarray]: Feature matrix ``X`` of shape ``(n, 5)`` and
+        target vector ``y`` of shape ``(n, 1)``, both ``float32``.
     """
     rng = np.random.default_rng(seed)
     X = rng.random((n, 5))
@@ -39,12 +42,15 @@ def synthetic_5d_pickle(path: str, n: int, seed: int | None = None) -> str:
     Generate and persist a synthetic 5D dataset to pickle with metadata.
 
     Args:
-        path (str): Target filepath (including .pkl name).
-        n (int): Number of samples.
-        seed (int | None): Optional RNG seed.
+        path (str): Target filepath (including ``.pkl`` name) to write.
+        n (int): Number of samples to generate.
+        seed (int | None): Optional RNG seed for reproducibility.
 
     Returns:
-        str: The path written.
+        str: The absolute or relative path written.
+
+    Raises:
+        OSError: If the file cannot be written to the requested location.
     """
     X, y = synthetic_5d(n, seed=seed)
     metadata = {

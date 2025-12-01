@@ -1,3 +1,5 @@
+"""TensorFlow tester mirroring the NumPy-based Tester API for the 5D→1D regressor."""
+
 # TensorFlow tester mirroring the numpy-based Tester API
 from __future__ import annotations
 
@@ -15,7 +17,11 @@ from .utils import log_call, timer
 class TesterTF:
     __test__ = False  # prevent pytest from collecting this as a test class
     """
-    TensorFlow tester for the 5D→1D regressor. Loads saved Keras model and normalisation stats.
+    TensorFlow tester for the 5D→1D regressor.
+
+    The tester loads the persisted Keras model and associated normalisation statistics
+    produced by :class:`TrainerTF`, then provides a thin wrapper to run normalised
+    inference on new data.
     """
 
     def __init__(self, directory: str) -> None:
@@ -23,7 +29,11 @@ class TesterTF:
         Initialise the tester with saved model artifacts.
 
         Args:
-            directory: Directory containing `model_tf.keras` and `normalisation_values_tf.npz`.
+            directory: Directory containing ``model_tf.keras`` and
+                ``normalisation_values_tf.npz`` produced by training.
+
+        Raises:
+            FileNotFoundError: If either the model or normalisation archive cannot be found.
         """
         
         self.directory = directory
@@ -45,7 +55,18 @@ class TesterTF:
     @log_call
     def _load_input(self, X_data: Union[np.ndarray, str]) -> np.ndarray:
         """
-        Load and validate input data from array or pickle path.
+        Load and validate input data from a NumPy array or pickle file path.
+
+        Args:
+            X_data: Either an array-like object of shape ``(N, 5)`` or a path to a
+                ``.pkl`` file containing such an array.
+
+        Returns:
+            ``np.ndarray`` with shape ``(N, 5)`` and dtype ``float32``.
+
+        Raises:
+            ValueError: If the provided path is not a ``.pkl`` file or the array does
+                not have five feature columns.
         """
         
         if isinstance(X_data, str):
@@ -65,13 +86,20 @@ class TesterTF:
     @log_call
     def predict(self, X_data: Union[np.ndarray, str]) -> np.ndarray:
         """
-        Run inference on normalised input data.
+        Run inference on normalised input data using the saved Keras model.
+
+        The method loads/validates input data, applies the stored mean/std scaling, and
+        returns model predictions.
 
         Args:
-            X_data: NumPy array of shape (N,5) or path to .pkl file containing such an array.
+            X_data: NumPy array of shape ``(N, 5)`` or path to a ``.pkl`` file containing
+                such an array.
 
         Returns:
-            Predicted targets of shape (N, 1).
+            Array of predicted targets with shape ``(N, 1)``.
+
+        Raises:
+            ValueError: Propagated from ``_load_input`` when the supplied data is invalid.
         """
         
         X = self._load_input(X_data)

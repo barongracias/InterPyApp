@@ -1,3 +1,5 @@
+"""Core NumPy-based feedforward network used by interpy_bg training and testing."""
+
 # imports
 import numpy as np
 import os
@@ -8,23 +10,12 @@ from .utils import timer, log_call
 
 class NeuralNetwork():
     """
-    Feedforward neural network for 5D to 1 interpolation.
-    
-    Attributes:
-        hidden_sizes (list[int]): Number of neurons in each hidden layer.
-        Lambda (float): L2 regularization parameter.
-        directory (str): Directory path to save output files.
-        input_size (int): Number of input features (fixed at 5).
-        output_size (int): Number of output neurons (fixed at 1).
-        logger (logging.Logger): Logger instance for class.
-        layer_sizes (list[int]): Complete list of layer sizes including input, hidden, output.
-        weights (list[np.ndarray]): Weight matrices for each layer connection.
-        biases (list[np.ndarray]): Bias vectors for each layer (excluding input layer).
-        m (list[np.ndarray]): Adam first-moment terms for weights.
-        v (list[np.ndarray]): Adam second-moment terms for weights.
-        mb (list[np.ndarray]): Adam first-moment terms for biases.
-        vb (list[np.ndarray]): Adam second-moment terms for biases.
-        t (int): Adam timestep for bias correction.
+    Lightweight feedforward neural network for 5D->1 interpolation.
+
+    The network supports configurable hidden layer sizes, activation functions, and
+    weight initialisation strategies. It also tracks Adam optimiser state required by
+    the training loop and exposes forward/backprop routines used by ``Trainer`` and
+    ``Tester``.
     """
     
     def __init__(
@@ -37,15 +28,19 @@ class NeuralNetwork():
         seed: int | None = None
     ):
         """
-        Initialize the neural network with random weights and zero biases.
+        Initialise network topology, parameters, and optimiser state.
 
         Args:
-            hidden_sizes (list[int]): List specifying number of neurons in each hidden layer.
-            Lambda (float): L2 regularisation parameter.
-            directory (str): Directory path to save output files.
-            activation (str): Activation for hidden layers ('sigmoid', 'tanh', 'relu', 'leakyrelu').
-            weight_init (str): Weight init strategy ('auto', 'he', 'xavier').
-            seed (int | None): Optional RNG seed for reproducibility.
+            hidden_sizes (list[int]): Width of each hidden layer in order.
+            Lambda (float): L2 regularisation strength applied during backprop.
+            directory (str): Output directory for artifacts (logs, weights).
+            activation (str): Hidden-layer activation ('sigmoid', 'tanh', 'relu', 'leakyrelu').
+            weight_init (str): Weight initialisation ('auto', 'he', 'xavier'); ``auto`` selects
+                He for ReLU variants, otherwise Xavier.
+            seed (int | None): Optional RNG seed for reproducible initialisation.
+
+        Raises:
+            ValueError: If an unsupported activation or weight initialisation strategy is provided.
         """
         
         self.hidden_sizes: list[int] = hidden_sizes    # e.g., [16, 32, 16]
@@ -104,7 +99,17 @@ class NeuralNetwork():
 
     def _resolve_init(self, fan_in: int, fan_out: int) -> str:
         """
-        Decide which weight initialisation to use.
+        Decide which weight initialisation scheme to use for a layer.
+
+        Args:
+            fan_in (int): Number of input units to the layer.
+            fan_out (int): Number of output units from the layer.
+
+        Returns:
+            str: Either ``"he"`` or ``"xavier"`` depending on configuration.
+
+        Raises:
+            ValueError: If ``weight_init`` is not recognised.
         """
         if self.weight_init == "auto":
             return "he" if self.activation_name in {"relu", "leakyrelu"} else "xavier"
@@ -114,7 +119,16 @@ class NeuralNetwork():
 
     def activation(self, z: np.ndarray) -> np.ndarray:
         """
-        Apply the configured activation function element-wise.
+        Apply the configured activation function element-wise to a pre-activation array.
+
+        Args:
+            z (np.ndarray): Pre-activation values for a layer.
+
+        Returns:
+            np.ndarray: Activated values with the same shape as ``z``.
+
+        Raises:
+            ValueError: If the configured activation is unsupported.
         """
         if self.activation_name == "sigmoid":
             return np.where(z >= 0, 1 / (1 + np.exp(-z)), np.exp(z) / (1 + np.exp(z)))
@@ -128,7 +142,16 @@ class NeuralNetwork():
     
     def activation_deriv(self, z: np.ndarray) -> np.ndarray:
         """
-        Derivative of the configured activation function applied element-wise.
+        Compute the derivative of the configured activation element-wise.
+
+        Args:
+            z (np.ndarray): Pre-activation values for a layer.
+
+        Returns:
+            np.ndarray: Derivative values matching the shape of ``z``.
+
+        Raises:
+            ValueError: If the configured activation is unsupported.
         """
         if self.activation_name == "sigmoid":
             sig = self.activation(z)
@@ -143,13 +166,13 @@ class NeuralNetwork():
     
     def forward(self, X: np.ndarray) -> np.ndarray:
         """
-        Perform a forward pass through the network.
+        Perform a forward pass through the network and cache activations.
 
         Args:
-            X (np.ndarray): Input data of shape (N, 5) where N is the number of data points.
+            X (np.ndarray): Input data of shape ``(N, 5)`` where N is the number of rows.
 
         Returns:
-            np.ndarray: Network output of shape (N, 1).
+            np.ndarray: Network output of shape ``(N, 1)``.
         """
         
         self.logger.debug(f"Forward pass input shape: {X.shape}")
@@ -177,16 +200,14 @@ class NeuralNetwork():
     
     def cost_function(self, X: np.ndarray, y: np.ndarray) -> float:
         """
-        Compute the cost (loss) of the neural network for given inputs and targets.
-    
-        The cost equals mean squared error (MSE) plus L2 regularisation on the weights.
-    
+        Compute mean squared error with L2 regularisation for given inputs/targets.
+
         Args:
-            X (np.ndarray): Input data of shape (N, 5), where N is the number of data points.
-            y (np.ndarray): True target values of shape (N, 1).
-    
+            X (np.ndarray): Input data of shape ``(N, 5)``.
+            y (np.ndarray): Target values of shape ``(N, 1)``.
+
         Returns:
-            float: Scalar cost value.
+            float: Scalar cost (MSE + L2 penalty).
         """
         
         # y predicted values from forward pass
@@ -208,17 +229,16 @@ class NeuralNetwork():
     
     def backprop(self, X: np.ndarray, y: np.ndarray, y_hat: np.ndarray) -> tuple[list[np.ndarray], list[np.ndarray]]:
         """
-        Calculate the gradients of the cost function w.r.t. to weights and biases using backpropagation.
+        Calculate gradients of the loss with respect to weights and biases.
 
         Args:
-            X (np.ndarray): Input data of shape (N, 5), where N is the number of data points.
-            y (np.ndarray): True target values of shape (N, 1).
-            y_hat (np.ndarray): Predicted target values of shape (N, 1).
+            X (np.ndarray): Input data of shape ``(N, 5)``.
+            y (np.ndarray): True targets of shape ``(N, 1)``.
+            y_hat (np.ndarray): Predicted targets of shape ``(N, 1)`` from a forward pass.
 
         Returns:
-            tuple: Two lists:
-                - dW: list of np.ndarray, gradients of weights for each layer
-                - db: list of np.ndarray, gradients of biases for each layer
+            tuple[list[np.ndarray], list[np.ndarray]]: Gradients ``(dW, db)`` aligned with
+            the ``weights`` and ``biases`` lists.
         """
         
         # initialise gradient lists

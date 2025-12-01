@@ -1,3 +1,5 @@
+"""NumPy-based tester for running inference with saved interpy_bg models."""
+
 # imports
 import numpy as np
 import os
@@ -12,28 +14,23 @@ from .utils import timer, log_call
 class Tester(NeuralNetwork):
     __test__ = False  # prevent pytest from collecting this as a test class
     """
-    Tester class for trained feedforward neural network. Loads model weights and normalisation values, applies normalisation,
-    and calculates predicted outputs for given test inputs.
+    Inference helper for trained feedforward networks.
 
-    Inherits from NeuralNetwork.
-
-    Attributes:
-        directory (str): Directory path to save output files.
-        mean (np.ndarray | None): Mean of the input training data
-        std (np.ndarray | None): Standard deviation of the input training data
+    Loads saved weights and normalisation statistics produced during training, applies
+    the same scaling to incoming data, and returns predictions for provided samples.
     """
     
     def __init__(self, hidden_sizes: list[int], Lambda: float, directory: str, activation: str = "sigmoid", weight_init: str = "auto", seed: int | None = None):
         """
-        Initialise Tester with hyperparameters and call NeuralNetwork constructor.
+        Construct a tester aligned with a previously trained model.
 
         Args:
-            hidden_sizes (list[int]): Number of neurons in each hidden layer.
-            Lambda (float): L2 regularization parameter.
-            directory (str): Directory path to save output files.
+            hidden_sizes (list[int]): Number of neurons in each hidden layer (should match training).
+            Lambda (float): L2 regularisation parameter (should match training).
+            directory (str): Directory path containing saved artifacts.
             activation (str): Activation for hidden layers (should match training).
             weight_init (str): Weight init strategy; used only for completeness when constructing.
-            seed (int | None): Optional seed (not required for inference).
+            seed (int | None): Optional seed; rarely needed for inference.
         """
         
         super().__init__(hidden_sizes, Lambda, directory, activation=activation, weight_init=weight_init, seed=seed)
@@ -52,6 +49,12 @@ class Tester(NeuralNetwork):
         Args:
             filename (str): Metadata filename.
             directory (str): Directory path to load from.
+
+        Returns:
+            dict: Parsed metadata contents.
+
+        Raises:
+            FileNotFoundError: If the metadata file cannot be found.
         """
         
         if directory is None:
@@ -72,6 +75,12 @@ class Tester(NeuralNetwork):
         Args:
             filename (str): Name of the file.
             directory (str): Directory path to save file.
+
+        Returns:
+            None. Populates ``self.mean`` and ``self.std``.
+
+        Raises:
+            FileNotFoundError: If the normalisation archive cannot be located.
         """
         
         # verify path
@@ -96,6 +105,10 @@ class Tester(NeuralNetwork):
         
         Returns:
             np.ndarray: Normalised input data, shape (N, 5).
+
+        Raises:
+            ValueError: If normalisation statistics are missing or the input feature
+                dimension does not match the stored statistics.
         """
         
         if self.mean is None or self.std is None:
@@ -115,6 +128,10 @@ class Tester(NeuralNetwork):
 
         Returns:
             np.ndarray: Input data of shape (N, 5).
+
+        Raises:
+            ValueError: If a provided path is not ``.pkl`` or the loaded array has an
+                unexpected feature dimension.
         """
         
         # if path string passed
@@ -141,13 +158,18 @@ class Tester(NeuralNetwork):
     @log_call
     def predict(self, X_data: np.ndarray | str) -> np.ndarray:
         """
-        Perform interpolation using the trained model.
+        Perform inference using the saved model and stored normalisation statistics.
 
         Args:
             X_data (np.ndarray | str): Input data (N, 5) or path to .pkl file.
 
         Returns:
             np.ndarray: Predicted outputs of shape (N, 1).
+
+        Raises:
+            FileNotFoundError: If weights or normalisation files are missing in
+                ``self.directory``.
+            ValueError: If the supplied input data is invalid.
         """
         
         # load model weights and norm vals (always prefer saved artifacts if present)

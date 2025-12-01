@@ -1,4 +1,5 @@
-# TensorFlow implementation of the 5D→1D regressor
+"""TensorFlow implementation of the 5D→1D regressor network architecture."""
+
 from typing import Sequence
 
 import tensorflow as tf
@@ -11,15 +12,17 @@ def build_tf_model(
     input_dim: int = 5,
     ) -> tf.keras.Model:
     """
-    Build a feedforward network using the Keras Sequential API.
+    Build the feedforward network used for five-dimensional regression.
 
     Args:
-        hidden_sizes: Sizes of hidden layers.
-        Lambda: L2 regularisation strength.
-        input_dim: Number of input features (default: 5).
+        hidden_sizes: Sequence of hidden layer widths in the order they should appear.
+        Lambda: L2 regularisation strength applied to each Dense layer kernel.
+        input_dim: Dimensionality of the input feature vector. Defaults to 5 for the
+            5D→1D setup.
 
     Returns:
-        A compiled Keras model with L2-regularised Dense layers.
+        A Keras ``Model`` composed of ReLU-activated Dense layers followed by a single
+        linear output neuron.
     """
     
     model = Sequential(name="fived_regressor")

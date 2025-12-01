@@ -1,4 +1,4 @@
-# TensorFlow trainer mirroring the numpy-based Trainer API
+"""TensorFlow trainer mirroring the NumPy-based Trainer API for the 5D→1D regressor."""
 from __future__ import annotations
 
 import os
@@ -16,7 +16,11 @@ from .plotter import plot_loss, plot_predictions
 class TrainerTF:
     """
     TensorFlow/Keras trainer for the 5D→1D regressor.
-    Uses its own data loading/normalisation pipeline mirroring the NumPy trainer.
+
+    The trainer mirrors the NumPy-based implementation but builds and optimises a
+    Keras model. It handles data loading, standardisation, train/validation splitting,
+    training with optional callbacks, metric tracking, and artifact persistence
+    (model weights, normalisation stats, plots, and metadata).
     """
 
     def __init__(
@@ -34,6 +38,29 @@ class TrainerTF:
         batch_size: Optional[int] = 64,
         grad_clip: Optional[float] = 5.0,
     ) -> None:
+        """
+        Configure a TensorFlow training run and initialise the model.
+
+        Args:
+            directory: Output directory for saved artifacts (model, plots, logs, metadata).
+            hidden_sizes: Width of each hidden Dense layer, ordered from input to output.
+            Lambda: L2 regularisation strength applied to Dense layer kernels.
+            epochs: Maximum number of training epochs.
+            learning_rate: Initial learning rate for Adam.
+            train_val_split: Fraction of data used for training; remainder is validation.
+            seed: Random seed for deterministic weight initialisation and shuffling.
+            early_stop_patience: Number of epochs to wait for validation improvement before
+                stopping; ``None`` disables early stopping.
+            lr_decay: Multiplicative factor applied when validation loss plateaus; ``None``
+                disables learning-rate decay.
+            lr_decay_patience: Number of epochs with no improvement before applying decay.
+            batch_size: Mini-batch size; ``None`` uses full-batch training.
+            grad_clip: Gradient clipping norm applied in the optimizer; ``None`` disables clipping.
+
+        Raises:
+            ValueError: If any numeric hyperparameters are non-positive or invalid, or if
+                split parameters fall outside expected ranges.
+        """
         if any(h <= 0 for h in hidden_sizes):
             raise ValueError("Hidden sizes must be positive.")
         if Lambda <= 0:
@@ -100,7 +127,15 @@ class TrainerTF:
     @log_call
     def _save_norm_vals(self, mean: np.ndarray, std: np.ndarray, filename: str = "normalisation_values_tf.npz") -> str:
         """
-        Persist normalisation statistics for later inference.
+        Persist feature normalisation statistics for reuse during inference or evaluation.
+
+        Args:
+            mean: Per-feature mean computed on the training split.
+            std: Per-feature standard deviation computed on the training split.
+            filename: Name of the NumPy archive to create in ``self.directory``.
+
+        Returns:
+            Absolute path to the saved ``.npz`` file.
         """
         path = os.path.join(self.directory, filename)
         np.savez(path, mean=mean, std=std)
@@ -108,17 +143,44 @@ class TrainerTF:
 
     @staticmethod
     def calc_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        """
+        Compute root mean squared error between predicted and true targets.
+
+        Args:
+            y_true: Ground-truth targets of shape ``(N, 1)``.
+            y_pred: Predicted targets of shape ``(N, 1)``.
+
+        Returns:
+            RMSE as a Python ``float``.
+        """
         return float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
 
     @staticmethod
     def calc_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        """
+        Compute the coefficient of determination (R²) between predictions and targets.
+
+        Args:
+            y_true: Ground-truth targets of shape ``(N, 1)``.
+            y_pred: Predicted targets of shape ``(N, 1)``.
+
+        Returns:
+            R² score as a Python ``float``. Returns ``nan`` when variance is zero.
+        """
         ss_res = np.sum((y_true - y_pred) ** 2)
         ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
         return float(1 - ss_res / ss_tot) if ss_tot != 0 else float("nan")
 
     def _save_metadata(self, metadata: dict, filename: str = "tf_model_metadata.json") -> None:
         """
-        Save TF training metadata (architecture, metrics) to JSON.
+        Save TensorFlow training metadata (architecture, metrics) to JSON.
+
+        Args:
+            metadata: Serializable metadata dictionary describing the training run.
+            filename: JSON filename to create inside ``self.directory``.
+
+        Returns:
+            None. Writes a JSON file with the supplied metadata.
         """
         path = os.path.join(self.directory, filename)
         with open(path, "w", encoding="utf-8") as f:
@@ -127,7 +189,23 @@ class TrainerTF:
     @staticmethod
     def load_raw_data(pkl_path: str) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Load and validate raw X, y arrays from pickle. Imputes NaNs with column means.
+        Load and validate raw feature/target arrays from a pickle file.
+
+        The pickle may contain either a dictionary with ``"X"`` and ``"y"`` keys or a
+        two-element tuple/list ``(X, y)``. Missing values are imputed column-wise using
+        the mean; if an entire column is NaN an error is raised.
+
+        Args:
+            pkl_path: Path to a ``.pkl`` file containing training data.
+
+        Returns:
+            Tuple ``(X, y)`` where ``X`` has shape ``(N, 5)`` and ``y`` has shape ``(N, 1)``.
+
+        Raises:
+            FileNotFoundError: If ``pkl_path`` does not exist.
+            ValueError: When the file extension is not ``.pkl``, the payload does not
+                contain the expected data structure, shapes are inconsistent, feature
+                dimensionality is not 5, or missing values cannot be imputed.
         """
         if not os.path.exists(pkl_path):
             raise FileNotFoundError(f"Training pickle file not found: {pkl_path}")
@@ -178,13 +256,25 @@ class TrainerTF:
         random_state: int | None = None
     ) -> dict:
         """
-        Load and prepare dataset from a pickle file.
+        Load a dataset from pickle, validate shapes, split, and standardise features.
 
-        - Accepts dict with keys "X" and "y" (metadata ignored) or legacy tuple/list (X, y)
-        - Validates shapes (X: (N, 5), y: (N, 1))
-        - Handles missing values by imputing column means (raises if an entire column is NaN)
-        - Splits into train/val/test
-        - Standardises features using train-set mean/std and returns splits
+        Args:
+            pkl_path: Path to pickle containing ``X`` and ``y`` data in either a dict or
+                ``(X, y)`` tuple/list form.
+            train_frac: Fraction of samples assigned to the training split.
+            val_frac: Fraction assigned to validation.
+            test_frac: Fraction assigned to testing.
+            random_state: Seed for shuffling prior to splitting; ``None`` yields
+                non-deterministic ordering.
+
+        Returns:
+            Dictionary with normalised splits and statistics:
+            ``{\"X_train\", \"y_train\", \"X_val\", \"y_val\", \"X_test\", \"y_test\", \"mean\", \"std\"}``.
+
+        Raises:
+            ValueError: If split fractions are negative or do not sum to 1.0, if a split
+                would be empty, or if the data payload fails validation in
+                ``load_raw_data``.
         """
 
         if train_frac < 0 or val_frac < 0 or test_frac < 0:
@@ -240,7 +330,18 @@ class TrainerTF:
     @log_call
     def train(self, pkl_path: str) -> Tuple[list[float], list[float]]:
         """
-        Train the TensorFlow model. Returns train/val RMSE history.
+        Fit the TensorFlow model on the provided dataset and persist artifacts.
+
+        The method loads and standardises data, trains with optional early stopping and
+        learning-rate decay, saves the trained model, normalisation statistics, loss and
+        prediction plots, and writes a metadata JSON describing the run.
+
+        Args:
+            pkl_path: Path to a training pickle consumed by ``load_dataset``.
+
+        Returns:
+            Tuple ``(train_rmse, val_rmse)`` where each element is a list of RMSE values
+            per epoch as reported by Keras.
         """
         splits = TrainerTF.load_dataset(
             pkl_path,
@@ -316,6 +417,10 @@ class TrainerTF:
     def _callbacks(self) -> List[tf.keras.callbacks.Callback]:
         """
         Build optional callbacks for early stopping and learning-rate decay.
+
+        Returns:
+            List of configured Keras callbacks (may be empty) respecting the trainer's
+            early stopping and learning-rate decay settings.
         """
         callbacks: List[tf.keras.callbacks.Callback] = []
         if self.early_stop_patience:

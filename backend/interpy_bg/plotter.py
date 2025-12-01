@@ -1,3 +1,5 @@
+"""Plot helpers for the NumPy-based interpolator training and evaluation."""
+
 # imports
 import numpy as np
 import matplotlib
@@ -16,13 +18,18 @@ def plot_loss(train_loss: list[float],
               directory: str = None
               ) -> None:
     """
-    Plot training and validation RMSE vs epochs and save the figure in high-quality format.
+    Plot training and validation RMSE versus epochs and save the figure.
 
     Args:
-        train_loss (list[float]): Training RMSE per epoch.
-        val_loss (list[float]): Validation RMSE per epoch.
-        filename (str): Name of the file.
-        directory (str): Directory path to save file.
+        train_loss (list[float]): RMSE values per epoch on the training split.
+        val_loss (list[float]): RMSE values per epoch on the validation split.
+        filename (str): Name of the output image file (e.g. ``"rmse_vs_epochs.png"``).
+        directory (str): Directory path to save the image; defaults to the current
+            working directory when ``None``.
+
+    Returns:
+        None. Writes the plot to disk and logs the destination; errors are caught and
+        logged.
     """
     
     if directory is None:
@@ -64,13 +71,18 @@ def plot_predictions(y_true: list[float],
                      directory: str = None
                      ) -> None:
     """
-    Plot predicted vs true values for the model and save as a figure.
+    Visualise predicted versus true target values for the trained model.
 
     Args:
-        y_true (list[float]): True target values.
-        y_pred (list[float]): Predicted values from the neural network.
-        filename (str): Name of the file.
-        directory (str): Directory path to save file.
+        y_true (list[float]): Ground-truth target values.
+        y_pred (list[float]): Model predictions corresponding to ``y_true``.
+        filename (str): Name of the output image file (e.g. ``"ytrue_vs_ypred.png"``).
+        directory (str): Directory path to save the image; defaults to the current
+            working directory when ``None``.
+
+    Returns:
+        None. Writes the plot to disk and logs the destination; errors are caught and
+        logged.
     """
     
     if directory is None:

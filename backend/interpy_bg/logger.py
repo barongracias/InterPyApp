@@ -1,16 +1,22 @@
+"""Logger helpers for the NumPy-based interpolator backend."""
+
 # imports
 import logging
 import os
 
 def get_console_logger(name: str, directory: str) -> logging.Logger:
     """
-    Creates a console logger with the given name and log level.
+    Create or return a configured console logger with optional file logging.
     
     Args:
-        name (str): Name of the logger (typically __name__ of the module).
+        name (str): Name of the logger (typically ``__name__`` of the module).
         directory (str): Directory to store log files. Must exist or be created.
+
     Returns:
-        logging.Logger: Conffigured logger instance.
+        logging.Logger: Configured logger instance with console and file handlers.
+
+    Raises:
+        ValueError: If ``directory`` is falsy.
     
     """
     

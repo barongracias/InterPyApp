@@ -1,3 +1,5 @@
+"""NumPy-based trainer for the 5D->1D interpolation network."""
+
 # imports
 import json
 import numpy as np
@@ -13,22 +15,11 @@ from .utils import timer, log_call
 
 class Trainer(NeuralNetwork):
     """
-    Trainer class for feedforward neural network.
+    Trainer for the NumPy feedforward neural network.
 
-    Inherits from NeuralNetwork and adds functionality for training, calculating RMSE and saving trained models.
-
-    Attributes:
-        epochs (int): Number of training iterations.
-        learning_rate (float): Step size for gradient descent updates.
-        train_val_split (float): Fraction of data used for training.
-        train_loss_history (list[float]): RMSE per epoch for training set.
-        val_loss_history (list[float]): RMSE per epoch for validation set.
-        directory (str): Directory path to save output files.
-        beta1 (float): Exponential decay rate for first-moment estimates in Adam.
-        beta2 (float): Exponential decay rate for second-moment estimates in Adam.
-        epsilon (float): Small constant for numerical stability in Adam.
-        mean (np.ndarray | None): Mean of the input training data
-        std (np.ndarray | None): Standard deviation of the input training data
+    Extends :class:`NeuralNetwork` with data loading/normalisation, train/validation
+    splitting, Adam-based optimisation, early stopping, learning-rate decay, metric
+    tracking, and artifact persistence (weights, normalisation stats, plots, metadata).
     """
     
     def __init__(self,
@@ -50,18 +41,29 @@ class Trainer(NeuralNetwork):
                  seed: int | None = None,
                  ):
         """
-        Initialise Trainer with hyperparameters and call NeuralNetwork constructor.
+        Configure training run and initialise the base network plus optimiser state.
 
         Args:
-            directory (str): Directory path to save output files.
+            directory (str): Directory path to save output files and logs.
             hidden_sizes (list[int]): Number of neurons in each hidden layer.
-            Lambda (float): L2 regularization parameter.
+            Lambda (float): L2 regularisation parameter.
             epochs (int): Number of training iterations.
-            learning_rate (float): Learning rate for gradient descent.
-            train_val_split (float): Fraction of dataset used for training.
+            learning_rate (float): Learning rate for Adam updates.
+            train_val_split (float): Fraction of dataset used for training (remainder for validation).
             beta1 (float): Adam first-moment decay rate (default 0.9).
             beta2 (float): Adam second-moment decay rate (default 0.999).
             epsilon (float): Small constant to avoid divide-by-zero in Adam.
+            early_stop_patience (int | None): Number of epochs to wait for validation improvement before stopping;
+                ``None`` disables early stopping.
+            lr_decay (float | None): Multiplicative factor applied to the learning rate each epoch; ``None`` disables decay.
+            batch_size (int | None): Mini-batch size; ``None`` uses full-batch training.
+            grad_clip (float | None): Gradient clipping norm threshold; ``None`` disables clipping.
+            activation (str): Activation for hidden layers ('sigmoid', 'tanh', 'relu', 'leakyrelu').
+            weight_init (str): Weight initialisation strategy ('auto', 'he', 'xavier').
+            seed (int | None): Optional RNG seed for reproducibility.
+
+        Raises:
+            ValueError: If optimiser hyperparameters, decay/clipping values, or split fractions are invalid.
         """
         
         super().__init__(hidden_sizes, Lambda, directory, activation=activation, weight_init=weight_init, seed=seed)
@@ -119,7 +121,24 @@ class Trainer(NeuralNetwork):
     @staticmethod
     def load_raw_data(pkl_path: str) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Load and validate raw X, y arrays from pickle. Imputes NaNs with column means.
+        Load and validate raw feature/target arrays from a pickle file.
+
+        The pickle may contain either a dictionary with ``"X"`` and ``"y"`` keys or a
+        two-element tuple/list ``(X, y)``. Missing values are imputed column-wise using
+        the mean; if an entire column is NaN an error is raised.
+
+        Args:
+            pkl_path (str): Path to a ``.pkl`` file containing training data.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray]: ``(X, y)`` where ``X`` has shape ``(N, 5)`` and
+            ``y`` has shape ``(N, 1)``.
+
+        Raises:
+            FileNotFoundError: If ``pkl_path`` does not exist.
+            ValueError: When the file extension is not ``.pkl``, the payload does not
+                contain the expected data structure, shapes are inconsistent, feature
+                dimensionality is not 5, or missing values cannot be imputed.
         """
         if not os.path.exists(pkl_path):
             raise FileNotFoundError(f"Training pickle file not found: {pkl_path}")
@@ -165,7 +184,13 @@ class Trainer(NeuralNetwork):
     @staticmethod
     def dataset_stats(pkl_path: str) -> dict:
         """
-        Return minimal dataset stats for preview: rows, features, min/max for X and y.
+        Return lightweight dataset statistics for previewing a pickle payload.
+
+        Args:
+            pkl_path (str): Path to a training data pickle accepted by ``load_raw_data``.
+
+        Returns:
+            dict: Summary containing counts and min/max values for each feature and target.
         """
         X, y = Trainer.load_raw_data(pkl_path)
         stats = {
@@ -187,32 +212,25 @@ class Trainer(NeuralNetwork):
         random_state: int | None = None
     ) -> dict:
         """
-        Load and prepare dataset from a pickle file.
-
-        - Accepts dict with keys "X" and "y" (metadata ignored) or legacy tuple/list (X, y)
-        - Validates shapes (X: (N, 5), y: (N, 1))
-        - Handles missing values by imputing column means (raises if an entire column is NaN)
-        - Splits into train/val/test
-        - Standardises features using train-set mean/std and returns splits
+        Load a dataset from pickle, validate shapes, split, and standardise features.
 
         Args:
-            pkl_path (str): Path to the pickle file containing training data.
-            train_frac (float): Fraction of data for training.
-            val_frac (float): Fraction of data for validation.
-            test_frac (float): Fraction of data for testing.
-            random_state (int | None): Optional seed for reproducible shuffling.
+            pkl_path (str): Path to pickle containing ``X`` and ``y`` data in either a dict or
+                ``(X, y)`` tuple/list form.
+            train_frac (float): Fraction of samples assigned to the training split.
+            val_frac (float): Fraction assigned to validation.
+            test_frac (float): Fraction assigned to testing.
+            random_state (int | None): Seed for shuffling prior to splitting; ``None`` yields
+                non-deterministic ordering.
 
         Returns:
-            dict: {
-                "X_train": np.ndarray,
-                "y_train": np.ndarray,
-                "X_val": np.ndarray,
-                "y_val": np.ndarray,
-                "X_test": np.ndarray,
-                "y_test": np.ndarray,
-                "mean": np.ndarray,
-                "std": np.ndarray,
-            }
+            dict: Normalised splits and statistics:
+            ``{\"X_train\", \"y_train\", \"X_val\", \"y_val\", \"X_test\", \"y_test\", \"mean\", \"std\"}``.
+
+        Raises:
+            ValueError: If split fractions are negative or do not sum to 1.0, if a split
+                would be empty, or if the data payload fails validation in
+                ``load_raw_data``.
         """
         
         if train_frac < 0 or val_frac < 0 or test_frac < 0:
@@ -267,10 +285,13 @@ class Trainer(NeuralNetwork):
     @log_call
     def norm_vals(self, X_train: np.ndarray) -> None:
         """
-        Calculate and store mean and standard deviation into instance for normalisation.
+        Calculate and cache mean and standard deviation for later normalisation.
         
         Args:
             X_train (np.ndarray): Input training data.
+
+        Returns:
+            None. Updates ``self.mean`` and ``self.std`` in-place.
         """
         
         self.mean = X_train.mean(axis=0)
@@ -279,13 +300,16 @@ class Trainer(NeuralNetwork):
     @log_call
     def normalise(self, X: np.ndarray) -> np.ndarray:
         """
-        Normalise input using mean and standard deviation.
+        Normalise inputs using cached mean and standard deviation.
         
         Args:
             X (np.ndarray): Input data, shape (N, 5).
         
         Returns:
             np.ndarray: Normalised input data, shape (N, 5).
+
+        Raises:
+            ValueError: If normalisation statistics are missing.
         """
         if self.mean is None or self.std is None:
             raise ValueError("Normalisation values not set")
@@ -299,6 +323,9 @@ class Trainer(NeuralNetwork):
         Args:
             filename (str): Name of the file.
             directory (str): Directory path to save file.
+
+        Returns:
+            None. Persists ``self.mean`` and ``self.std`` to an ``.npz`` archive.
         """
         
         # verify path
@@ -318,6 +345,10 @@ class Trainer(NeuralNetwork):
         Args:
             filename (str): Name of the metadata file.
             directory (str): Directory path to save file.
+
+        Returns:
+            None. Writes a JSON file capturing architecture, regularisation, and
+            performance metrics for later inspection or inference.
         """
         if directory is None:
             directory = os.getcwd()
@@ -365,6 +396,13 @@ class Trainer(NeuralNetwork):
     def calc_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         """
         Calculate coefficient of determination (R^2) for regression.
+
+        Args:
+            y_true (np.ndarray): True target values, shape (N, 1).
+            y_pred (np.ndarray): Predicted values, shape (N, 1).
+
+        Returns:
+            float: R^2 score; returns ``nan`` when variance is zero.
         """
         ss_res = np.sum((y_true - y_pred) ** 2)
         ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
@@ -373,13 +411,21 @@ class Trainer(NeuralNetwork):
     @timer
     def train(self, pkl_path: str) -> tuple[list[float], list[float]]:
         """
-        Train the neural network using gradient descent with Adam optimiser and track RMSE. Saves RMSE vs epochs plot.
+        Train the neural network with Adam, track metrics, and persist artifacts.
+
+        The method loads and standardises data, runs mini-batch training with optional
+        learning-rate decay, early stopping, and gradient clipping, then saves weights,
+        normalisation stats, loss/prediction plots, and metadata.
 
         Args:
             pkl_path (str): Path to .pkl file containing training data (X, y).
 
         Returns:
             tuple[list[float], list[float]]: Training and validation RMSE histories.
+
+        Raises:
+            FileNotFoundError: If the supplied pickle path does not exist.
+            ValueError: If the dataset fails validation or split fractions produce empty splits.
         """
         
         splits = self.load_dataset(

@@ -1,3 +1,5 @@
+"""Plot helpers for the TensorFlow-based fivedreg training pipeline."""
+
 # plots for fivedreg (TensorFlow backend)
 import os
 import matplotlib
@@ -15,13 +17,18 @@ def plot_loss(train_loss: list[float],
               filename: str = "rmse_vs_epochs.png",
               directory: str | None = None) -> None:
     """
-    Plot training and validation RMSE vs epochs and save the figure.
+    Plot training and validation RMSE versus epochs and persist the image.
 
     Args:
-        train_loss: Training RMSE per epoch.
-        val_loss: Validation RMSE per epoch.
-        filename: Name of the file.
-        directory: Directory path to save file.
+        train_loss: Sequence of RMSE values measured on the training split per epoch.
+        val_loss: Sequence of RMSE values measured on the validation split per epoch.
+        filename: Name of the output image file (e.g. ``"rmse_vs_epochs.png"``).
+        directory: Target directory to write the plot; defaults to the current working
+            directory when ``None``.
+
+    Returns:
+        None. Writes ``filename`` to ``directory`` and logs the location; any errors are
+        caught and logged.
     """
     if directory is None:
         directory = os.getcwd()
@@ -56,13 +63,18 @@ def plot_predictions(y_true: list[float],
                      filename: str = "ytrue_vs_ypred.png",
                      directory: str | None = None) -> None:
     """
-    Plot predicted vs true values for the model and save as a figure.
+    Visualise predicted versus true targets for a trained model.
 
     Args:
-        y_true: True target values.
-        y_pred: Predicted values from the neural network.
-        filename: Name of the file.
-        directory: Directory path to save file.
+        y_true: Iterable of ground-truth target values.
+        y_pred: Iterable of model predictions corresponding to ``y_true``.
+        filename: Name of the output image file (e.g. ``"ytrue_vs_ypred.png"``).
+        directory: Target directory to write the plot; defaults to the current working
+            directory when ``None``.
+
+    Returns:
+        None. Writes ``filename`` to ``directory`` and logs the location; any errors are
+        caught and logged.
     """
     if directory is None:
         directory = os.getcwd()

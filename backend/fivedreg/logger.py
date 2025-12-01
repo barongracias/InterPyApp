@@ -1,15 +1,21 @@
-# Lightweight logger for fivedreg (mirrors interpy_bg.logger)
+"""Lightweight logger utilities mirroring the logging behaviour in other backends."""
+
 import logging
 import os
 
 
 def get_console_logger(name: str, log_dir: str | None = None) -> logging.Logger:
     """
-    Return a console logger with optional file logging.
+    Create or return a configured console logger with optional file output.
 
     Args:
-        name: Logger name.
-        log_dir: Optional directory to write log files.
+        name: Identifier used when retrieving or creating the logger.
+        log_dir: Directory to persist log files to disk; when ``None`` only console
+            output is configured.
+
+    Returns:
+        A ``logging.Logger`` configured with a console handler and, if requested,
+        a file handler writing to ``<log_dir>/<name>.log``.
     """
     logger = logging.getLogger(name)
     if logger.handlers:

@@ -179,7 +179,7 @@ export default function Home() {
 
     resetBackend();
     checkHealth();
-  }, []);
+  }, [backend]);
 
   const isPositiveNumber = (val: string) => {
     const num = Number(val);

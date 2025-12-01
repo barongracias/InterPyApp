@@ -20,7 +20,7 @@ Local/dev (installs interpy_bg + interpy_synth + fivedreg editable):
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements.lock
 ```
 
 PyPI:
@@ -38,6 +38,11 @@ cd ..
 ./scripts/docker_up.sh   # backend on :8000
 # ./scripts/docker_down.sh to stop
 ```
+
+Environment:
+- Configure CORS via `ALLOWED_ORIGINS` (comma-separated), e.g. copy `backend/.env.example`.
+- CPU-only: no GPU required; TensorFlow uses the CPU build.
+- For reproducibility, prefer `requirements.lock`.
 
 ## Quick Start
 

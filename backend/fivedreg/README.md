@@ -12,10 +12,13 @@ TensorFlow/Keras implementation of the 5D → 1D regressor with a simple trainin
 ## Installation (package)
 From this `backend/fivedreg` directory:
 ```bash
+pip install -r requirements.lock  # pinned CPU-only deps
 pip install .
 ```
 
 Headless environments: plotting is configured with the `Agg` backend, so no display is required.
+GPU is not required or supported; the package depends on `tensorflow-cpu`.
+For reproducibility, install via the pinned `requirements.lock` in `backend/`.
 
 Docker (whole app):
 
@@ -53,6 +56,11 @@ y_pred = tester.predict([0.1, 0.2, 0.3, 0.4, 0.5])
 
 Note: Ensure TensorFlow is installed in your environment to use this package. Training also saves plots (`rmse_vs_epochs.png`, `ytrue_vs_ypred.png`) to the `directory`.
 Metadata (`tf_model_metadata.json`) includes hidden sizes, Lambda, epochs run, best epoch, best train/val RMSE, baseline RMSE, and final train/val R².
+
+Performance/ops tips:
+- CPU-only build; choose modest hidden sizes/batch sizes for constrained CPUs.
+- Batch size and grad clipping can help stabilise small datasets (see tests for small-batch config).
+- Use `requirements.lock` for reproducibility; mount outputs via Docker volumes in production.
 
 ### FastAPI usage
 - `/train` supports `model_type=tf` to train and save TF artifacts into `backend/outputs/` (including TF plots) when running the API.

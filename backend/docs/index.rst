@@ -21,7 +21,7 @@ Installation (from repo)
 
     git clone https://github.com/barongracias/InterPyApp.git
     cd InterPyApp/backend
-    pip install -r requirements.txt   # installs interpy_bg, interpy_synth, and fivedreg (TF optional)
+    pip install -r requirements.lock   # installs pinned interpy_bg, interpy_synth, and fivedreg (TF optional)
 
 PyPI installs
 -------------
@@ -51,6 +51,14 @@ Docker quick start
 
     ./scripts/docker_build.sh
     ./scripts/docker_up.sh   # backend on :8000, frontend on :3000
+
+Notes: TensorFlow uses the CPU build; GPU is not required. Frontend API URLs point to the `backend` service in Docker.
+
+CI
+--
+
+- GitHub Actions workflow `.github/workflows/ci.yml` runs backend pytest and frontend lint/build/tests on pushes/PRs.
+- Use `requirements.lock` (backend) and `npm ci` (frontend) for reproducible installs.
 
 Package quick start
 -------------------

@@ -4,8 +4,6 @@ python-multipart==0.0.9
 numpy==1.26.4
 matplotlib==3.8.4
 httpx==0.27.2
-# Local packages (install in editable mode during development)
 -e ./interpy_synth
 -e .
-# TensorFlow backend (optional but required for TF endpoints/tests)
 -e ./fivedreg

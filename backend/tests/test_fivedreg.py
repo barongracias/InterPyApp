@@ -58,3 +58,27 @@ def test_fivedreg_smoke(tmp_path):
     preds = tester.predict(X_test)
     assert preds.shape == (3, 1)
     assert np.all(np.isfinite(preds))
+
+
+def test_fivedreg_small_batch(tmp_path):
+    out_dir = tmp_path / "tf_small_batch"
+    os.makedirs(out_dir, exist_ok=True)
+    train_pkl = _make_pkl(str(tmp_path), n=12, seed=11)
+
+    trainer = TrainerTF(
+        directory=str(out_dir),
+        hidden_sizes=[4],
+        epochs=3,
+        learning_rate=0.01,
+        train_val_split=0.75,
+        batch_size=4,
+        grad_clip=1.0,
+    )
+    train_loss, val_loss = trainer.train(train_pkl)
+    assert len(train_loss) == len(val_loss) > 0
+    assert os.path.exists(out_dir / "model_tf.keras")
+
+    tester = TesterTF(directory=str(out_dir))
+    X_test, _ = synthetic_5d(2, seed=123)
+    preds = tester.predict(X_test)
+    assert preds.shape == (2, 1)

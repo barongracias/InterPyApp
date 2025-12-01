@@ -1,9 +1,8 @@
 fivedreg Package
 ================
 
-`fivedreg` is the TensorFlow/Keras backend mirroring the NumPy-based `interpy_bg`
-API. It provides training/testing helpers plus plotting utilities for 5D → 1D
-regression.
+`fivedreg` is the TensorFlow/Keras backend for 5D → 1D regression. It provides
+training/testing helpers plus plotting utilities. CPU-only (`tensorflow-cpu`) is used.
 
 Overview
 --------
@@ -30,3 +29,9 @@ Submodules
    fivedreg.plotter
    fivedreg.logger
    fivedreg.utils
+
+Ops notes
+---------
+- CPU-only: depends on `tensorflow-cpu`.
+- Use `requirements.lock` in `backend/fivedreg/` for reproducible installs.
+- Batch size and grad clipping can help stabilise training on small datasets.

@@ -62,3 +62,6 @@ cd ../..
 Notes:
 - Plotting uses the headless `Agg` backend for compatibility with servers/CI.
 - `Trainer.load_raw_data` loads X/y as `float32` by default (suitable for NumPy and TF interop).
+- ML backend runs on CPU only; no GPU is required.
+- For reproducibility, use `pip install -r requirements.lock` from the repo root/backend.
+- Consider batch sizes/epochs appropriate to your hardware; outputs/ and uploads/ are mountable via Docker volumes.

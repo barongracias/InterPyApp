@@ -44,15 +44,22 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-## Tests
+## Tests / CI
 - Backend: `pytest backend/tests tests`
-- Frontend: `npm run lint` (add your test script if present)
+- Frontend: `npm run lint` and `npm test` (Node test runner placeholder)
+- CI: GitHub Actions in `.github/workflows/ci.yml` runs backend tests and frontend lint/build/tests on pushes/PRs.
 
 ## Docker
 - Build images: `./scripts/docker_build.sh`
 - Run stack: `./scripts/docker_up.sh` (backend on :8000, frontend on :3000)
 - Stop stack: `./scripts/docker_down.sh`
 - Compose file: `docker-compose.yml`
+- Frontend env example: `frontend/.env.example` (API URLs point to `backend` service). GPU is not required; TensorFlow uses the CPU build.
+
+## Ops & security notes
+- Containers run non-root; backend has a healthcheck via compose.
+- Prefer `requirements.lock` for reproducible backend installs; `npm ci` for frontend (package-lock present).
+- Set production CORS/ingress and TLS at your proxy; tighten allowed origins/headers as needed.
 
 ## Packaging (PyPI)
 Run from each package directory:

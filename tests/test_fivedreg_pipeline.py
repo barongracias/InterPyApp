@@ -11,7 +11,7 @@ tf = pytest.importorskip("tensorflow", reason="TensorFlow is required for fivedr
 
 from fivedreg.trainer_tf import TrainerTF  # noqa: E402
 from fivedreg.tester_tf import TesterTF  # noqa: E402
-from interpy_bg.synthetic import synthetic_5d  # noqa: E402
+from interpy_synth import synthetic_5d  # noqa: E402
 
 
 def _make_train_pickle(tmpdir: str, n: int = 40, seed: int = 42) -> str:

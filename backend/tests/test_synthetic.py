@@ -1,6 +1,11 @@
 import os
+import sys
 import numpy as np
-from interpy_bg.synthetic import synthetic_5d, synthetic_5d_pickle
+
+# Ensure local packages are importable without installing
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from interpy_synth import synthetic_5d, synthetic_5d_pickle
 
 
 def test_synthetic_shapes_and_types(tmp_path):

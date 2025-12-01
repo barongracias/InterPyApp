@@ -1,55 +1,81 @@
 ==========================
-interpy_bg
+InterPyApp
 ==========================
 
-Feedforward neural network library for 5D → 1D interpolation.
-This package includes modules for training, testing, plotting, and logging.
+InterPyApp is a full stack project for 5D → 1D interpolation. It includes:
+
+- A FastAPI backend (`backend/main.py`) that exposes training, prediction, and artifact endpoints.
+- Two installable ML backends:
+  - `interpy_bg`: NumPy implementation with training/testing/plotting utilities.
+  - `fivedreg`: TensorFlow/Keras implementation mirroring the NumPy API.
+- A shared synthetic data helper package: `interpy_synth`.
+- A separate frontend (not documented here) that consumes the API.
 
 Getting Started
 ===============
 
-Installation
-------------
-
-Install directly from the repository:
+Installation (from repo)
+------------------------
 
 .. code-block:: bash
 
     git clone https://github.com/barongracias/InterPyApp.git
     cd InterPyApp/backend
-    pip install .
+    pip install -r requirements.txt   # installs interpy_bg, interpy_synth, and fivedreg (TF optional)
 
-Usage
------
+PyPI installs
+-------------
+
+.. code-block:: bash
+
+    pip install interpy_bg     # NumPy backend (pulls interpy-synth)
+    pip install fivedreg       # TensorFlow backend (pulls interpy-synth + tensorflow)
+
+Backend API quick start
+-----------------------
+
+Run the FastAPI server (from `backend/`):
+
+.. code-block:: bash
+
+    uvicorn main:app --reload
+
+Key endpoints:
+- `/train` and `/predict` support `model_type` of `numpy` or `tf`.
+- `/upload`, `/plots/{filename}`, `/artifacts/{filename}`, `/reset`.
+
+Package quick start
+-------------------
+
+NumPy backend (`interpy_bg`):
 
 .. code-block:: python
-    
+
     from interpy_bg.trainer import Trainer
     from interpy_bg.tester import Tester
-    import numpy as np
+    from interpy_synth import synthetic_5d_pickle
 
-    # Example: training
-    X_train = np.random.rand(100, 5)
-    y_train = np.random.rand(100, 1)
+    train_pkl = synthetic_5d_pickle("outputs/train.pkl", n=1000, seed=42)
+    trainer = Trainer(directory="outputs", hidden_sizes=[16, 8], epochs=200)
+    train_loss, val_loss = trainer.train(train_pkl)
 
-    trainer = Trainer(
-        directory=\"outputs\",
-        hidden_sizes=[10, 5],
-        Lambda=0.01,
-        epochs=300,
-        learning_rate=0.01,
-        train_val_split=0.8,
-        activation=\"relu\",
-        batch_size=32,
-        early_stop_patience=20,
-        lr_decay=0.98,
-        seed=42,
-    )
-    train_loss, val_loss = trainer.train(\"path/to/train.pkl\")  # .pkl file with dict {\"X\": X_train, \"y\": y_train}
+    tester = Tester(directory="outputs", hidden_sizes=[16, 8])
+    y_pred = tester.predict([[0.1, 0.2, 0.3, 0.4, 0.5]])
 
-    # Example: testing
-    tester = Tester(hidden_sizes=[10, 5], Lambda=0.01, directory=\"outputs\")
-    y_pred = tester.predict(X_train)
+TensorFlow backend (`fivedreg`):
+
+.. code-block:: python
+
+    from fivedreg.trainer_tf import TrainerTF
+    from fivedreg.tester_tf import TesterTF
+    from interpy_synth import synthetic_5d_pickle
+
+    data_path = synthetic_5d_pickle("outputs/train.pkl", n=1000, seed=42)
+    trainer = TrainerTF(directory="outputs", hidden_sizes=[64, 32, 16], epochs=50)
+    trainer.train(data_path)
+
+    tester = TesterTF(directory="outputs")
+    preds = tester.predict([[0.1, 0.2, 0.3, 0.4, 0.5]])
 
 Contents
 ========
@@ -59,6 +85,8 @@ Contents
    :caption: Package Contents:
 
    interpy_bg
+    fivedreg
+   interpy_synth
    modules
 
 Indices and Tables

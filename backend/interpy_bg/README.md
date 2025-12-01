@@ -1,21 +1,22 @@
 # interpy_bg (NumPy)
 
-NumPy implementation of the 5D → 1D regressor used across the app.
+NumPy implementation of the 5D → 1D regressor with a simple training/testing API.
 
 ## Modules
 - `neural_network.py`: core feedforward net (5 inputs → hidden → 1 output).
 - `trainer.py`: data validation/standardisation, training loop (Adam, L2, early stop/lr decay), artifacts/plots.
 - `tester.py`: loads saved weights/norm stats to run predictions.
 - `plotter.py`: loss/prediction plots.
-- `synthetic.py`: synthetic 5D data generator.
 - `logger.py`, `utils.py`: logging and helpers.
+- Synthetic data generator is provided by the `interpy_synth` package.
+- Synthetic data generator is provided by the separate `interpy_synth` package (dependency).
 
 ## Usage
 ```python
 import os, pickle
 from interpy_bg.trainer import Trainer
 from interpy_bg.tester import Tester
-from interpy_bg.synthetic import synthetic_5d_pickle
+from interpy_synth import synthetic_5d_pickle
 
 out_dir = "outputs"
 os.makedirs(out_dir, exist_ok=True)
@@ -48,7 +49,7 @@ with open(train_pkl, "rb") as f:
 y_pred = tester.predict(data["X"])
 ```
 
-Artifacts: `model_weights.npz`, `normalisation_values.npz`, `model_metadata.json`, `rmse_vs_epochs.png`, `ytrue_vs_ypred.png`. Metadata includes architecture, regularisation, activation/init, batch/clip/seed, best metrics, and R². You can serve artifacts via the FastAPI `/artifacts` and `/plots` endpoints. For TensorFlow outputs (same directory/plots with `_tf` suffix), see `backend/fivedreg/README.md`.
+Artifacts: `model_weights.npz`, `normalisation_values.npz`, `model_metadata.json`, `rmse_vs_epochs.png`, `ytrue_vs_ypred.png`. Metadata includes architecture, regularisation, activation/init, batch/clip/seed, best metrics, and R². You can serve artifacts via the FastAPI `/artifacts` and `/plots` endpoints.
 
 Notes:
 - Plotting uses the headless `Agg` backend for compatibility with servers/CI.

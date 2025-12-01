@@ -1,12 +1,13 @@
 # fivedreg (TensorFlow)
 
-TensorFlow/Keras implementation of the 5D → 1D regressor, mirroring the numpy-based `interpy_bg` API.
+TensorFlow/Keras implementation of the 5D → 1D regressor with a simple training/testing API.
 
 ## Modules
 - `tf_model.py`: `build_tf_model(hidden_sizes, Lambda)` builds a Sequential model with L2 regularisation and He/Xavier init.
 - `trainer_tf.py`: `TrainerTF` loads/validates data, trains a TF model, and saves `model_tf.keras` plus normalisation values. Optional early stopping, LR decay, batch size, and grad clipping.
 - `tester_tf.py`: `TesterTF` loads the saved TF model and normalisation stats to make predictions on NumPy arrays or .pkl files.
-- `logger.py`, `utils.py`: lightweight logging and decorators (independent from `interpy_bg`).
+- `logger.py`, `utils.py`: lightweight logging and decorators.
+- Synthetic data examples use the separate `interpy_synth` package (installed automatically).
 
 ## Installation (package)
 From this `backend/fivedreg` directory:
@@ -20,7 +21,7 @@ Headless environments: plotting is configured with the `Agg` backend, so no disp
 ```python
 from fivedreg.trainer_tf import TrainerTF
 from fivedreg.tester_tf import TesterTF
-from interpy_bg.synthetic import synthetic_5d_pickle
+from interpy_synth import synthetic_5d_pickle
 import os
 
 out_dir = "outputs"
@@ -43,8 +44,7 @@ y_pred = tester.predict([0.1, 0.2, 0.3, 0.4, 0.5])
 ```
 
 Note: Ensure TensorFlow is installed in your environment to use this package. Training also saves plots (`rmse_vs_epochs.png`, `ytrue_vs_ypred.png`) to the `directory`.
-Metadata (`tf_model_metadata.json`) now includes hidden sizes, Lambda, epochs run, best epoch, best train/val RMSE, baseline RMSE, and final train/val R².
-When used via the FastAPI app, TF artifacts are written to `backend/outputs_tf/`.
+Metadata (`tf_model_metadata.json`) includes hidden sizes, Lambda, epochs run, best epoch, best train/val RMSE, baseline RMSE, and final train/val R².
 
 ### FastAPI usage
 - `/train` supports `model_type=tf` to train and save TF artifacts into `backend/outputs/` (including TF plots) when running the API.

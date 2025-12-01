@@ -1,9 +1,13 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+DOCS_DIR = os.path.dirname(__file__)
+BACKEND_ROOT = os.path.abspath(os.path.join(DOCS_DIR, ".."))
+sys.path.insert(0, BACKEND_ROOT)  # interpy_bg, interpy_synth
+sys.path.insert(0, os.path.join(BACKEND_ROOT, "fivedreg"))  # fivedreg
 
 # -- Project information -----------------------------------------------------
-project = 'interpy_bg'
+project = 'InterPyApp'
 copyright = '2025, Baron Gracias'
 author = 'Baron Gracias'
 

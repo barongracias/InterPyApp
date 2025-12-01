@@ -3,8 +3,9 @@ import os
 import math
 import pickle
 from datetime import datetime, timezone
-import numpy as np
 from typing import Tuple
+
+import numpy as np
 
 
 def synthetic_5d(n: int, seed: int | None = None) -> Tuple[np.ndarray, np.ndarray]:

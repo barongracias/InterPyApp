@@ -3,6 +3,8 @@ loader:
   search_path: .
   packages:
     - interpy_bg
+    - interpy_synth
+    - fivedreg
 renderer:
   type: markdown
   filename: README.md

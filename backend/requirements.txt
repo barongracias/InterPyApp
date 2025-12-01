@@ -4,4 +4,8 @@ python-multipart
 numpy
 matplotlib
 httpx
-.
+# Local packages (install in editable mode during development)
+-e ./interpy_synth
+-e .
+# TensorFlow backend (optional but required for TF endpoints/tests)
+-e ./fivedreg

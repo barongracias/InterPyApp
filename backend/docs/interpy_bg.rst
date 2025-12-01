@@ -15,6 +15,7 @@ interpy_bg provides:
 - Testing utilities (`tester.py`)
 - Plotting functions (`plotter.py`)
 - Logging configuration (`logger.py`)
+- Synthetic data generation via the companion `interpy_synth` package (installed as a dependency)
 
 Submodules
 ----------

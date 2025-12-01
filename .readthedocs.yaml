@@ -12,3 +12,5 @@ python:
   install:
     - requirements: backend/docs/requirements.txt
     - path: backend
+    - path: backend/fivedreg
+    - path: backend/interpy_synth

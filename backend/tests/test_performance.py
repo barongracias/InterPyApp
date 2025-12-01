@@ -7,7 +7,7 @@ import numpy as np
 # Ensure backend modules are importable
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from interpy_bg.synthetic import synthetic_5d, synthetic_5d_pickle
+from interpy_synth import synthetic_5d, synthetic_5d_pickle
 from interpy_bg.trainer import Trainer
 from interpy_bg.tester import Tester
 

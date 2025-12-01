@@ -1,0 +1,38 @@
+interpy_synth Package
+=====================
+
+`interpy_synth` is a lightweight companion package that generates the synthetic
+5D → 1D data used throughout this project. Both `interpy_bg` (NumPy) and
+`fivedreg` (TensorFlow) depend on it for examples and tests.
+
+Installation
+------------
+
+.. code-block:: bash
+
+   pip install interpy-synth
+   # or from this repo:
+   # pip install git+https://github.com/barongracias/InterPyApp.git#egg=interpy-synth&subdirectory=backend/interpy_synth
+
+Usage
+-----
+
+.. code-block:: python
+
+   from interpy_synth import synthetic_5d, synthetic_5d_pickle
+
+   # arrays
+   X, y = synthetic_5d(1000, seed=42)
+
+   # pickle with metadata
+   path = synthetic_5d_pickle("outputs/synth.pkl", n=1000, seed=42)
+
+API
+---
+
+.. autosummary::
+   :toctree: _autosummary
+   :recursive:
+
+   interpy_synth.synthetic_5d
+   interpy_synth.synthetic_5d_pickle

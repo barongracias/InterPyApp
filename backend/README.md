@@ -12,26 +12,22 @@ It provides modular classes for defining, training, and testing neural networks,
 - Save/load trained weights, normalization values, and model metadata
 - Simple plotting of training/validation loss and predictions
 - Dataset validation/standardisation with train/val/test splits
-- Synthetic 5D data generator utilities
+- Synthetic 5D data generator utilities (via `interpy_synth` dependency)
 
 ## Installation
 
-Install via pip:
+Local/dev (installs interpy_bg + interpy_synth + fivedreg editable):
 
 ```bash
-pip install interpy_bg
+cd backend
+pip install -r requirements.txt
 ```
 
-or directly via GitHub:
+PyPI:
 
 ```bash
-pip install git+https://github.com/barongracias/InterPyApp.git#egg=interpy-bg&subdirectory=backend
-```
-
-For the TensorFlow implementation (`fivedreg`), install from its subdirectory:
-
-```bash
-pip install git+https://github.com/barongracias/InterPyApp.git#egg=fivedreg&subdirectory=backend/fivedreg
+pip install interpy_bg         # NumPy backend (pulls interpy-synth)
+pip install fivedreg           # TF backend (pulls interpy-synth + tensorflow)
 ```
 
 ## Quick Start
@@ -112,7 +108,7 @@ plot_predictions(y, predictions, "ytrue_vs_ypred.png", output_dir)
 ### Synthetic data
 
 ```python
-from interpy_bg.synthetic import synthetic_5d, synthetic_5d_pickle
+from interpy_synth import synthetic_5d, synthetic_5d_pickle
 
 # Generate arrays
 X, y = synthetic_5d(1000, seed=42)

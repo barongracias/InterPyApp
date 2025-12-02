@@ -1,13 +1,13 @@
-fivedreg Package
-================
+fivedreg_tf Package
+====================
 
-`fivedreg` is the TensorFlow/Keras backend for 5D → 1D regression. It provides
+`fivedreg_tf` is the TensorFlow/Keras backend for 5D → 1D regression. It provides
 training/testing helpers plus plotting utilities. CPU-only (`tensorflow-cpu`) is used.
 
 Overview
 --------
 
-fivedreg provides:
+fivedreg_tf provides:
 
 - TensorFlow model builder (`tf_model.py`)
 - Training utilities (`trainer_tf.py`)
@@ -23,15 +23,15 @@ Submodules
    :caption: Core Modules
    :recursive:
 
-   fivedreg.tf_model
-   fivedreg.trainer_tf
-   fivedreg.tester_tf
-   fivedreg.plotter
-   fivedreg.logger
-   fivedreg.utils
+   fivedreg_tf.tf_model
+   fivedreg_tf.trainer_tf
+   fivedreg_tf.tester_tf
+   fivedreg_tf.plotter
+   fivedreg_tf.logger
+   fivedreg_tf.utils
 
 Ops notes
 ---------
 - CPU-only: depends on `tensorflow-cpu`.
-- Use `requirements.lock` in `backend/fivedreg/` for reproducible installs.
+- Use `requirements.lock` in `backend/fivedreg_tf/` for reproducible installs.
 - Batch size and grad clipping can help stabilise training on small datasets.

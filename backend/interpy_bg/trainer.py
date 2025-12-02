@@ -318,7 +318,7 @@ class Trainer(NeuralNetwork):
     @log_call
     def save_norm_vals(self, filename: str = "normalisation_values.npz", directory: str = None) -> None:
         """
-        Save normalisation values to outputs.
+        Save normalisation values to outputs_numpy.
 
         Args:
             filename (str): Name of the file.

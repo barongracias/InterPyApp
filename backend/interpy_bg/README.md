@@ -1,67 +1,155 @@
-# interpy_bg (NumPy)
+# interpy_bg
 
-NumPy implementation of the 5D → 1D regressor with a simple training/testing API.
+`interpy_bg` is a feedforward neural network library designed for 5D → 1D interpolation.  
+It provides modular classes for defining, training, and testing neural networks, with built-in normalization, RMSE tracking, and plotting utilities.
 
-## Modules
-- `neural_network.py`: core feedforward net (5 inputs → hidden → 1 output).
-- `trainer.py`: data validation/standardisation, training loop (Adam, L2, early stop/lr decay), artifacts/plots.
-- `tester.py`: loads saved weights/norm stats to run predictions.
-- `plotter.py`: loss/prediction plots.
-- `logger.py`, `utils.py`: logging and helpers.
-- Synthetic data generator is provided by the `interpy_synth` package (dependency).
+## Features
 
-## Usage
-```python
-import os, pickle
-from interpy_bg.trainer import Trainer
-from interpy_bg.tester import Tester
-from interpy_synth import synthetic_5d_pickle
+- Feedforward neural networks with customizable hidden layers
+- L2 regularization
+- Training with RMSE tracking and validation split
+- Normalization of input data
+- Save/load trained weights, normalization values, and model metadata
+- Simple plotting of training/validation loss and predictions
+- Dataset validation/standardisation with train/val/test splits
+- Synthetic 5D data generator utilities (via `interpy_synth` dependency)
 
-out_dir = "outputs"
-os.makedirs(out_dir, exist_ok=True)
+## Installation
 
-# create a training pickle (dict with X, y)
-train_pkl = synthetic_5d_pickle(os.path.join(out_dir, "train.pkl"), n=1000, seed=42)
-
-# train
-trainer = Trainer(
-    directory=out_dir,
-    hidden_sizes=[16, 8],
-    epochs=300,
-    learning_rate=0.01,
-    Lambda=0.01,
-    train_val_split=0.8,
-    activation="relu",
-    weight_init="auto",   # auto/he/xavier
-    batch_size=64,
-    grad_clip=5.0,
-    early_stop_patience=20,
-    lr_decay=0.98,
-    seed=42,
-)
-train_loss, val_loss = trainer.train(train_pkl)
-
-# test
-tester = Tester(hidden_sizes=[16, 8], Lambda=0.01, directory=out_dir)
-with open(train_pkl, "rb") as f:
-    data = pickle.load(f)
-y_pred = tester.predict(data["X"])
-```
-
-Artifacts: `model_weights.npz`, `normalisation_values.npz`, `model_metadata.json`, `rmse_vs_epochs.png`, `ytrue_vs_ypred.png`. Metadata includes architecture, regularisation, activation/init, batch/clip/seed, best metrics, and R². You can serve artifacts via the FastAPI `/artifacts` and `/plots` endpoints.
-
-Docker (whole app):
+Local/dev (installs interpy_bg + interpy_synth + fivedreg_tf editable):
 
 ```bash
-cd ../..
+cd backend
+pip install -r requirements.lock
+```
+
+PyPI:
+
+```bash
+pip install interpy_bg         # NumPy backend (pulls interpy-synth)
+pip install fivedreg_tf        # TF backend (pulls interpy-synth + tensorflow)
+```
+
+Docker:
+
+```bash
+cd ..
 ./scripts/docker_build.sh
 ./scripts/docker_up.sh   # backend on :8000
 # ./scripts/docker_down.sh to stop
 ```
 
-Notes:
-- Plotting uses the headless `Agg` backend for compatibility with servers/CI.
-- `Trainer.load_raw_data` loads X/y as `float32` by default (suitable for NumPy and TF interop).
-- ML backend runs on CPU only; no GPU is required.
-- For reproducibility, use `pip install -r requirements.lock` from the repo root/backend.
-- Consider batch sizes/epochs appropriate to your hardware; outputs/ and uploads/ are mountable via Docker volumes.
+Environment:
+- Configure CORS via `ALLOWED_ORIGINS` (comma-separated), e.g. copy `backend/.env.example`.
+- CPU-only: no GPU required; TensorFlow uses the CPU build.
+- For reproducibility, prefer `requirements.lock`.
+
+## Quick Start
+
+### Training a model
+
+```python
+import numpy as np
+from interpy_bg.trainer import Trainer
+import os, pickle
+
+# Dummy dataset
+X = np.random.rand(50, 5)
+y = np.random.rand(50, 1)
+
+# assign output directory
+output_dir = os.path.join("outputs_numpy")
+os.makedirs(output_dir, exist_ok=True)
+
+# Save training data to a pickle file as a dictionary with keys "X" and "y"
+train_pkl = os.path.join(output_dir, "train_data.pkl")
+with open(train_pkl, "wb") as f:
+    pickle.dump({"X": X, "y": y}, f)
+
+# Initialize trainer
+trainer = Trainer(
+    directory=output_dir,
+    hidden_sizes=[16, 8],
+    Lambda=0.01,            # not required, default value set as 0.01
+    epochs=300,             # reduce for quicker runs
+    learning_rate=0.01,     # not required, default value set as 0.01
+    train_val_split=0.8,    # not required, default value set as 0.8
+    beta1=0.9,              # not required, default value set as 0.9
+    beta2=0.999,            # not required, default value set as 0.999
+    epsilon=1e-8,           # not required, default value set as 1e-8
+    activation="relu",      # optional: sigmoid/tanh/relu/leakyrelu
+    weight_init="auto",     # optional: auto/he/xavier
+    batch_size=32,          # optional: mini-batching
+    grad_clip=5.0,          # optional: gradient clipping
+    early_stop_patience=20, # optional: early stopping
+    lr_decay=0.98,          # optional: LR decay per epoch
+    seed=42,                # optional: reproducibility
+)
+
+# Train model using the pickle file path
+train_loss, val_loss = trainer.train(train_pkl)
+```
+
+### Testing a model
+
+```python
+from interpy_bg.tester import Tester
+
+# Use the same output directory where the model was saved
+output_dir = os.path.join("outputs_numpy")
+
+tester = Tester(
+    hidden_sizes=[16, 8],
+    Lambda=0.01,
+    directory=output_dir,
+    activation="relu",
+    weight_init="auto",
+)
+predictions = tester.predict(X)  # Can also pass a .pkl file with test data
+```
+
+### Plotting results
+
+```python
+from interpy_bg.plotter import plot_loss, plot_predictions
+
+output_dir = os.path.join("outputs_numpy")
+
+plot_loss(train_loss, val_loss, "rmse_vs_epochs.png", output_dir)
+plot_predictions(y, predictions, "ytrue_vs_ypred.png", output_dir)
+```
+
+### Synthetic data
+
+```python
+from interpy_synth import synthetic_5d, synthetic_5d_pickle
+
+# Generate arrays
+X, y = synthetic_5d(1000, seed=42)
+
+# Persist with metadata
+path = synthetic_5d_pickle("outputs_numpy/synth.pkl", n=1000, seed=42)
+```
+
+## Tests
+
+- All backend tests live in `backend/tests/` (API, NumPy, TensorFlow, synthetic, performance).
+- Run with `python -m pytest backend/tests`.
+
+## Notes
+
+- NumPy training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture, Lambda, activation/init, batch/clip/seed, best metrics incl. R²) into `backend/outputs_numpy/` (when running via the API).
+- TensorFlow training (set `model_type=tf` on `/train`) writes `model_tf.keras`, `normalisation_values_tf.npz`, plots, and `tf_model_metadata.json` into `backend/outputs_tf/` (served alongside NumPy artifacts).
+- Prediction (`/predict` or `Tester.predict`) uses the trained architecture/config in metadata; client-supplied hidden sizes or Lambda are ignored. `/predict` also accepts `model_type` to choose NumPy vs TF.
+- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}` (serves NumPy or TF artifacts from their respective output folders), and `/evaluate` (prefers NumPy artifacts, falls back to TF if present).
+- `/reset` clears uploads plus both output folders (`backend/outputs_numpy/` and `backend/outputs_tf/`).
+- Plotting uses the headless `Agg` backend in both packages for compatibility with servers/CI.
+
+## Documentation
+
+Full API documentation is hosted on [ReadTheDocs](https://interpyapp.readthedocs.io).
+See details for every class, method and plotting utility.
+
+## License
+
+MIT License

@@ -16,7 +16,7 @@ from typing import List
 # ----------------------
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
-OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+OUTPUT_NUMPY_DIR = os.path.join(BASE_DIR, "outputs_numpy")
 OUTPUT_TF_DIR = os.path.join(BASE_DIR, "outputs_tf")
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 ALLOWED_ARTIFACTS_NUMPY = {
@@ -49,7 +49,7 @@ app_logger = get_app_logger()
 
 def clear_directories():
     """Helper to clean uploads and both NumPy/TF outputs folders."""
-    for d in [UPLOAD_DIR, OUTPUT_DIR, OUTPUT_TF_DIR]:
+    for d in [UPLOAD_DIR, OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR]:
         if os.path.exists(d):
             shutil.rmtree(d)
         os.makedirs(d, exist_ok=True)
@@ -212,7 +212,7 @@ async def train_model(
 
         if model_type == "numpy":
             trainer = Trainer(
-                directory=OUTPUT_DIR,
+                directory=OUTPUT_NUMPY_DIR,
                 hidden_sizes=hidden_sizes_list,
                 Lambda=Lambda,
                 epochs=epochs,
@@ -251,7 +251,7 @@ async def train_model(
             }
         else:
             try:
-                from fivedreg.trainer_tf import TrainerTF
+                from fivedreg_tf.trainer_tf import TrainerTF
             except Exception as e:
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
 
@@ -334,7 +334,7 @@ async def predict(
 
         if model_type == "tf":
             try:
-                from fivedreg.tester_tf import TesterTF
+                from fivedreg_tf.tester_tf import TesterTF
             except Exception as e:
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
             model_path = os.path.join(OUTPUT_TF_DIR, "model_tf.keras")
@@ -356,7 +356,7 @@ async def predict(
 
         # NumPy model path
         try:
-            metadata = Tester.load_metadata(directory=OUTPUT_DIR)
+            metadata = Tester.load_metadata(directory=OUTPUT_NUMPY_DIR)
         except FileNotFoundError:
             return JSONResponse(status_code=400, content={"error": "Model not trained yet. Train a NumPy model first or set model_type=tf."})
 
@@ -383,7 +383,7 @@ async def predict(
         tester = Tester(
             hidden_sizes=[int(x) for x in trained_hidden_sizes],
             Lambda=float(trained_lambda),
-            directory=OUTPUT_DIR,
+            directory=OUTPUT_NUMPY_DIR,
             activation=metadata.get("activation", "sigmoid"),
             weight_init=metadata.get("weight_init", "auto"),
         )
@@ -407,9 +407,9 @@ async def predict(
 @app.get("/plots/{filename}")
 async def get_plot(filename: str):
     """
-    Serve saved plots from outputs directory (NumPy) or outputs_tf (TF).
+    Serve saved plots from outputs_numpy (NumPy) or outputs_tf (TF).
     """
-    for directory in (OUTPUT_DIR, OUTPUT_TF_DIR):
+    for directory in (OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR):
         plot_path = os.path.join(directory, filename)
         if os.path.exists(plot_path):
             return FileResponse(plot_path)
@@ -422,7 +422,7 @@ async def get_artifact(filename: str):
     """
     if filename not in ALLOWED_ARTIFACTS:
         return JSONResponse(status_code=404, content={"error": f"Artifact not allowed: {filename}"})
-    for directory in (OUTPUT_DIR, OUTPUT_TF_DIR):
+    for directory in (OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR):
         artifact_path = os.path.join(directory, filename)
         if os.path.exists(artifact_path):
             return FileResponse(artifact_path)
@@ -448,18 +448,18 @@ async def evaluate_model(file: UploadFile = File(...)):
         # ensure trained model exists (prefer numpy if available)
         model_type = "numpy"
         tester = None
-        if os.path.exists(os.path.join(OUTPUT_DIR, "model_metadata.json")):
-            metadata = Tester.load_metadata(directory=OUTPUT_DIR)
+        if os.path.exists(os.path.join(OUTPUT_NUMPY_DIR, "model_metadata.json")):
+            metadata = Tester.load_metadata(directory=OUTPUT_NUMPY_DIR)
             tester = Tester(
                 hidden_sizes=[int(x) for x in metadata.get("hidden_sizes", [])],
                 Lambda=float(metadata.get("Lambda", 0.01)),
-                directory=OUTPUT_DIR,
+                directory=OUTPUT_NUMPY_DIR,
                 activation=metadata.get("activation", "sigmoid"),
                 weight_init=metadata.get("weight_init", "auto"),
             )
         elif os.path.exists(os.path.join(OUTPUT_TF_DIR, "model_tf.keras")):
             try:
-                from fivedreg.tester_tf import TesterTF
+                from fivedreg_tf.tester_tf import TesterTF
             except Exception as e:
                 return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
             tester = TesterTF(directory=OUTPUT_TF_DIR)
@@ -484,7 +484,7 @@ async def reset_directories():
     """
     try:
         # Remove and recreate both directories
-        for directory in [UPLOAD_DIR, OUTPUT_DIR, OUTPUT_TF_DIR]:
+        for directory in [UPLOAD_DIR, OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR]:
             if os.path.exists(directory):
                 shutil.rmtree(directory)
             os.makedirs(directory, exist_ok=True)

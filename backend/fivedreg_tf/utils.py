@@ -1,4 +1,4 @@
-"""Utility decorators for logging and instrumentation used across the fivedreg package."""
+"""Utility decorators for logging and instrumentation used across the fivedreg_tf package."""
 
 import time
 import functools

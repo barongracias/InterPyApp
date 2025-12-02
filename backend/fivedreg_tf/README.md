@@ -1,4 +1,4 @@
-# fivedreg (TensorFlow)
+# fivedreg_tf (TensorFlow)
 
 TensorFlow/Keras implementation of the 5D → 1D regressor with a simple training/testing API.
 
@@ -10,7 +10,7 @@ TensorFlow/Keras implementation of the 5D → 1D regressor with a simple trainin
 - Synthetic data examples use the separate `interpy_synth` package (installed automatically).
 
 ## Installation (package)
-From this `backend/fivedreg` directory:
+From this `backend/fivedreg_tf` directory:
 ```bash
 pip install -r requirements.lock  # pinned CPU-only deps
 pip install .
@@ -25,17 +25,17 @@ Docker (whole app):
 ```bash
 cd ../..
 ./scripts/docker_build.sh
-./scripts/docker_up.sh   # backend on :8000 (includes TF if built with fivedreg)
+./scripts/docker_up.sh   # backend on :8000 (includes TF if built with fivedreg_tf)
 ```
 
 ## Usage
 ```python
-from fivedreg.trainer_tf import TrainerTF
-from fivedreg.tester_tf import TesterTF
+from fivedreg_tf.trainer_tf import TrainerTF
+from fivedreg_tf.tester_tf import TesterTF
 from interpy_synth import synthetic_5d_pickle
 import os
 
-out_dir = "outputs"
+out_dir = "outputs_tf"
 os.makedirs(out_dir, exist_ok=True)
 data_path = synthetic_5d_pickle(os.path.join(out_dir, "train.pkl"), n=1000, seed=42)
 
@@ -60,9 +60,9 @@ Metadata (`tf_model_metadata.json`) includes hidden sizes, Lambda, epochs run, b
 Performance/ops tips:
 - CPU-only build; choose modest hidden sizes/batch sizes for constrained CPUs.
 - Batch size and grad clipping can help stabilise small datasets (see tests for small-batch config).
-- Use `requirements.lock` for reproducibility; mount outputs via Docker volumes in production.
+- Use `requirements.lock` for reproducibility; mount outputs_tf via Docker volumes in production.
 
 ### FastAPI usage
-- `/train` supports `model_type=tf` to train and save TF artifacts into `backend/outputs/` (including TF plots) when running the API.
+- `/train` supports `model_type=tf` to train and save TF artifacts into `backend/outputs_tf/` (including TF plots) when running the API.
 - `/predict` accepts `model_type=tf` to run predictions using the TF model.
 - `/artifacts/{filename}` serves TF artifacts (`model_tf.keras`, `normalisation_values_tf.npz`, `tf_model_metadata.json`) as well as NumPy ones.

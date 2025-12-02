@@ -269,7 +269,7 @@ class NeuralNetwork():
     @log_call
     def save_weights(self, filename: str = "model_weights.npz", directory: str = None) -> None:
         """
-        Save the weights and biases to backend/outputs.
+        Save the weights and biases to backend/outputs_numpy.
 
         Args:
             filename (str): Name of the file.
@@ -288,7 +288,7 @@ class NeuralNetwork():
     @log_call
     def load_weights(self, filename: str = "model_weights.npz", directory: str = None) -> None:
         """
-        Load the weights and biases from backend/outputs.
+        Load the weights and biases from backend/outputs_numpy.
 
         Args:
             filename (str): Name of the file to load.

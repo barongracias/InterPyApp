@@ -22,7 +22,7 @@ jobs:
       - name: Run backend tests
         run: |
           cd backend
-          python -m pytest tests ../tests
+          python -m pytest tests
 
   frontend:
     runs-on: ubuntu-latest

@@ -5,5 +5,5 @@ numpy==1.26.4
 matplotlib==3.8.4
 httpx==0.27.2
 -e ./interpy_synth
--e .
--e ./fivedreg
+-e ./interpy_bg
+-e ./fivedreg_tf

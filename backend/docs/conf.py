@@ -4,7 +4,7 @@ import sys
 DOCS_DIR = os.path.dirname(__file__)
 BACKEND_ROOT = os.path.abspath(os.path.join(DOCS_DIR, ".."))
 sys.path.insert(0, BACKEND_ROOT)  # interpy_bg, interpy_synth
-sys.path.insert(0, os.path.join(BACKEND_ROOT, "fivedreg"))  # fivedreg
+sys.path.insert(0, os.path.join(BACKEND_ROOT, "fivedreg_tf"))  # fivedreg_tf
 
 # -- Project information -----------------------------------------------------
 project = 'InterPyApp'

@@ -11,7 +11,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./backend/outputs:/app/outputs
+      - ./backend/outputs_numpy:/app/outputs_numpy
       - ./backend/outputs_tf:/app/outputs_tf
       - ./backend/uploads:/app/uploads
     healthcheck:

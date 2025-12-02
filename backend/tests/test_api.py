@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 # Ensure backend modules can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from main import app, OUTPUT_DIR
+from main import app, OUTPUT_NUMPY_DIR
 
 
 def _make_dataset_file(tmp_path):
@@ -77,7 +77,7 @@ def test_train_and_predict(tmp_path):
 
     # Artifacts exist
     for fname in ["model_weights.npz", "normalisation_values.npz", "model_metadata.json"]:
-        assert os.path.exists(os.path.join(OUTPUT_DIR, fname))
+        assert os.path.exists(os.path.join(OUTPUT_NUMPY_DIR, fname))
 
     # Predict with manual values
     predict_form = {

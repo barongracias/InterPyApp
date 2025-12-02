@@ -2,8 +2,10 @@
 # Specified Files/Folders
 # ------------------
 backend/uploads/
-backend/outputs/
+backend/outputs_numpy/
 backend/outputs_tf/
+backend/tests/outputs_tf/
+backend/tests/outputs_numpy/
 backend/pydoc-markdown.yml
 backend/docs/_build/
 backend/docs/_autosummary/

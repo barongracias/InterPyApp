@@ -5,7 +5,7 @@ Full-stack project for 5D → 1D interpolation. Includes a FastAPI backend (with
 ## Repository layout
 - `backend/` — FastAPI app (`main.py`), Python packages, and docs
   - `interpy_bg/` — NumPy implementation (`pip install interpy_bg`)
-  - `fivedreg/` — TensorFlow implementation (`pip install fivedreg`)
+  - `fivedreg_tf/` — TensorFlow implementation (`pip install fivedreg_tf`)
   - `interpy_synth/` — synthetic data utilities (`pip install interpy-synth`)
   - `docs/` — Sphinx docs for the backend packages
   - `tests/` — backend test suites
@@ -19,7 +19,7 @@ Requires Python 3.10+.
 cd backend
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt       # installs interpy_bg, interpy_synth, fivedreg (TF optional)
+pip install -r requirements.txt       # installs interpy_bg, interpy_synth, fivedreg_tf (TF optional)
 uvicorn main:app --reload             # start FastAPI on :8000
 ```
 
@@ -32,7 +32,7 @@ Synthetic data helpers come from `interpy_synth`:
 ```python
 from interpy_synth import synthetic_5d, synthetic_5d_pickle
 X, y = synthetic_5d(1000, seed=42)
-path = synthetic_5d_pickle("outputs/train.pkl", n=1000, seed=42)
+path = synthetic_5d_pickle("outputs_numpy/train.pkl", n=1000, seed=42)
 ```
 
 ## Frontend quick start
@@ -45,7 +45,7 @@ npm run dev          # http://localhost:3000
 ```
 
 ## Tests / CI
-- Backend: `pytest backend/tests tests`
+- Backend: `pytest backend/tests`
 - Frontend: `npm run lint` and `npm test` (Node test runner placeholder)
 - CI: GitHub Actions in `.github/workflows/ci.yml` runs backend tests and frontend lint/build/tests on pushes/PRs.
 
@@ -69,7 +69,7 @@ python -m build --no-isolation   # creates dist/ wheel + sdist
 twine upload dist/*              # when ready to publish
 ```
 
-Packages: `backend/interpy_synth`, `backend` (interpy_bg), `backend/fivedreg`.
+Packages: `backend/interpy_synth`, `backend/interpy_bg`, `backend/fivedreg_tf`.
 
 ## Documentation
 - Sphinx docs: `cd backend/docs && make html`

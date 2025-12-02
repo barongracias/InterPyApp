@@ -1,6 +1,6 @@
-"""Plot helpers for the TensorFlow-based fivedreg training pipeline."""
+"""Plot helpers for the TensorFlow-based fivedreg_tf training pipeline."""
 
-# plots for fivedreg (TensorFlow backend)
+# plots for fivedreg_tf (TensorFlow backend)
 import os
 import matplotlib
 import matplotlib.pyplot as plt

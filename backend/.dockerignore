@@ -11,6 +11,7 @@ build
 .DS_Store
 .python-version
 outputs
+outputs_numpy
 outputs_tf
 uploads
 docs/_build

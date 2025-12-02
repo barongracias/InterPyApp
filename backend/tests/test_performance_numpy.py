@@ -26,7 +26,7 @@ def r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 def benchmark_sizes(sizes=(1000, 5000, 10000), test_samples=500, seed=42, epochs=200):
     base_dir = os.path.abspath(os.path.dirname(__file__))
     data_dir = os.path.join(base_dir, "data")
-    out_root = os.path.join(base_dir, "outputs")
+    out_root = os.path.join(base_dir, "outputs_numpy")
     os.makedirs(data_dir, exist_ok=True)
     os.makedirs(out_root, exist_ok=True)
 
@@ -68,6 +68,16 @@ def benchmark_sizes(sizes=(1000, 5000, 10000), test_samples=500, seed=42, epochs
             Lambda=float(tester_metadata["Lambda"]),
             directory=out_dir,
         )
+
+        # ensure artifacts saved for this size
+        for fname in [
+            "model_weights.npz",
+            "normalisation_values.npz",
+            "rmse_vs_epochs.png",
+            "ytrue_vs_ypred.png",
+            "model_metadata.json",
+        ]:
+            assert os.path.exists(os.path.join(out_dir, fname)), f"Missing artifact {fname} for n={n}"
 
         X_test, y_test = synthetic_5d(test_samples, seed=seed + 123)
 

@@ -16,7 +16,7 @@ It provides modular classes for defining, training, and testing neural networks,
 
 ## Installation
 
-Local/dev (installs interpy_bg + interpy_synth + fivedreg editable):
+Local/dev (installs interpy_bg + interpy_synth + fivedreg_tf editable):
 
 ```bash
 cd backend
@@ -27,7 +27,7 @@ PyPI:
 
 ```bash
 pip install interpy_bg         # NumPy backend (pulls interpy-synth)
-pip install fivedreg           # TF backend (pulls interpy-synth + tensorflow)
+pip install fivedreg_tf        # TF backend (pulls interpy-synth + tensorflow)
 ```
 
 Docker:
@@ -58,7 +58,7 @@ X = np.random.rand(50, 5)
 y = np.random.rand(50, 1)
 
 # assign output directory
-output_dir = os.path.join("outputs")
+output_dir = os.path.join("outputs_numpy")
 os.makedirs(output_dir, exist_ok=True)
 
 # Save training data to a pickle file as a dictionary with keys "X" and "y"
@@ -96,7 +96,7 @@ train_loss, val_loss = trainer.train(train_pkl)
 from interpy_bg.tester import Tester
 
 # Use the same output directory where the model was saved
-output_dir = os.path.join("outputs")
+output_dir = os.path.join("outputs_numpy")
 
 tester = Tester(
     hidden_sizes=[16, 8],
@@ -113,7 +113,7 @@ predictions = tester.predict(X)  # Can also pass a .pkl file with test data
 ```python
 from interpy_bg.plotter import plot_loss, plot_predictions
 
-output_dir = os.path.join("outputs")
+output_dir = os.path.join("outputs_numpy")
 
 plot_loss(train_loss, val_loss, "rmse_vs_epochs.png", output_dir)
 plot_predictions(y, predictions, "ytrue_vs_ypred.png", output_dir)
@@ -128,21 +128,21 @@ from interpy_synth import synthetic_5d, synthetic_5d_pickle
 X, y = synthetic_5d(1000, seed=42)
 
 # Persist with metadata
-path = synthetic_5d_pickle("outputs/synth.pkl", n=1000, seed=42)
+path = synthetic_5d_pickle("outputs_numpy/synth.pkl", n=1000, seed=42)
 ```
 
 ## Tests
 
-- Core library tests: `tests/` (e.g., `tests/test_trainer.py`, `tests/test_pipeline.py`).
-- API/synthetic/performance tests: `backend/tests/` (e.g., `test_api.py`, `test_synthetic.py`, `test_performance.py`).
+- All backend tests live in `backend/tests/` (API, NumPy, TensorFlow, synthetic, performance).
+- Run with `python -m pytest backend/tests`.
 
 ## Notes
 
-- NumPy training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture, Lambda, activation/init, batch/clip/seed, best metrics incl. R²) into `backend/outputs/` (when running via the API).
+- NumPy training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture, Lambda, activation/init, batch/clip/seed, best metrics incl. R²) into `backend/outputs_numpy/` (when running via the API).
 - TensorFlow training (set `model_type=tf` on `/train`) writes `model_tf.keras`, `normalisation_values_tf.npz`, plots, and `tf_model_metadata.json` into `backend/outputs_tf/` (served alongside NumPy artifacts).
 - Prediction (`/predict` or `Tester.predict`) uses the trained architecture/config in metadata; client-supplied hidden sizes or Lambda are ignored. `/predict` also accepts `model_type` to choose NumPy vs TF.
 - API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}` (serves NumPy or TF artifacts from their respective output folders), and `/evaluate` (prefers NumPy artifacts, falls back to TF if present).
-- `/reset` clears uploads plus both output folders (`backend/outputs/` and `backend/outputs_tf/`).
+- `/reset` clears uploads plus both output folders (`backend/outputs_numpy/` and `backend/outputs_tf/`).
 - Plotting uses the headless `Agg` backend in both packages for compatibility with servers/CI.
 
 ## Documentation

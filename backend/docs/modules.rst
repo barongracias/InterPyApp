@@ -7,5 +7,5 @@ This page contains a reference for the core packages shipped in this repository.
    :maxdepth: 1
 
    interpy_bg
-   fivedreg
+   fivedreg_tf
    interpy_synth

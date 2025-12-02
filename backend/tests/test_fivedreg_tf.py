@@ -4,13 +4,13 @@ import sys
 import pytest
 import numpy as np
 
-# make fivedreg importable
+# make fivedreg_tf importable
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-tf = pytest.importorskip("tensorflow", reason="TensorFlow is required for fivedreg tests")
+tf = pytest.importorskip("tensorflow", reason="TensorFlow is required for fivedreg_tf tests")
 
-from fivedreg.trainer_tf import TrainerTF  # noqa: E402
-from fivedreg.tester_tf import TesterTF  # noqa: E402
+from fivedreg_tf.trainer_tf import TrainerTF  # noqa: E402
+from fivedreg_tf.tester_tf import TesterTF  # noqa: E402
 from interpy_synth import synthetic_5d  # noqa: E402
 
 

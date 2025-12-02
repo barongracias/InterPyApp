@@ -11,6 +11,5 @@ sphinx:
 python:
   install:
     - requirements: backend/docs/requirements.txt
-    - path: backend/fivedreg_tf
     - path: backend/interpy_bg
     - path: backend/interpy_synth

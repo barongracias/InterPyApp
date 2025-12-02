@@ -1046,7 +1046,7 @@ export default function Home() {
                   {trainResult.plots.map((plot: string) => (
                     <div key={`${plot}-${trainResult.model_type}`} className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
                       <img
-                        src={`${backend}/plots/${plot}?k=${plotKey}`}
+                        src={`${backend}/plots/${plot}?k=${plotKey}&model_type=${trainResult.model_type}`}
                         alt={plot}
                         className="w-full"
                       />

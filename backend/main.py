@@ -50,15 +50,18 @@ app_logger = get_app_logger()
 def clear_directories():
     """Helper to clean uploads and both NumPy/TF outputs folders without removing mount points."""
     def _clear_dir(path: str) -> None:
-        os.makedirs(path, exist_ok=True)
-        for entry in os.scandir(path):
-            try:
-                if entry.is_dir(follow_symlinks=False):
-                    shutil.rmtree(entry.path)
-                else:
-                    os.unlink(entry.path)
-            except OSError as exc:
-                app_logger.warning(f"Could not remove {entry.path}: {exc}")
+        try:
+            os.makedirs(path, exist_ok=True)
+            for entry in os.scandir(path):
+                try:
+                    if entry.is_dir(follow_symlinks=False):
+                        shutil.rmtree(entry.path)
+                    else:
+                        os.unlink(entry.path)
+                except OSError as exc:
+                    app_logger.warning(f"Could not remove {entry.path}: {exc}")
+        except OSError as exc:
+            app_logger.warning(f"Could not scan {path}: {exc}")
 
     for d in [UPLOAD_DIR, OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR]:
         _clear_dir(d)
@@ -414,11 +417,21 @@ async def predict(
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/plots/{filename}")
-async def get_plot(filename: str):
+async def get_plot(filename: str, model_type: str | None = None):
     """
     Serve saved plots from outputs_numpy (NumPy) or outputs_tf (TF).
     """
-    for directory in (OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR):
+    search_dirs = []
+    if model_type:
+        mt = model_type.lower()
+        if mt == "numpy":
+            search_dirs = [OUTPUT_NUMPY_DIR]
+        elif mt == "tf":
+            search_dirs = [OUTPUT_TF_DIR]
+    if not search_dirs:
+        search_dirs = [OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR]
+
+    for directory in search_dirs:
         plot_path = os.path.join(directory, filename)
         if os.path.exists(plot_path):
             return FileResponse(plot_path)

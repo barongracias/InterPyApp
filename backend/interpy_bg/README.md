@@ -16,7 +16,7 @@ It provides modular classes for defining, training, and testing neural networks,
 
 ## Installation
 
-Local/dev (installs interpy_bg + interpy_synth + fivedreg_tf editable):
+Local/dev (installs interpy_bg + interpy_synth + fivedreg_tf from PyPI):
 
 ```bash
 cd backend

@@ -1,22 +1,27 @@
-# interpy_bg
+# Backend Overview
 
-`interpy_bg` is a feedforward neural network library designed for 5D → 1D interpolation.  
-It provides modular classes for defining, training, and testing neural networks, with built-in normalization, RMSE tracking, and plotting utilities.
+This backend hosts the FastAPI service (`main.py`) plus three installable packages:
+- `interpy_bg`: NumPy implementation of the 5D→1D regressor (pip: `interpy_bg`)
+- `fivedreg_tf`: TensorFlow implementation mirroring the NumPy API (pip: `fivedreg_tf`)
+- `interpy_synth`: Synthetic data generator shared by both backends (pip: `interpy-synth`)
+
+`main.py` exposes `/upload`, `/train`, `/predict`, `/artifacts`, `/plots`, `/evaluate`, and `/reset`, writing NumPy artifacts to `backend/outputs_numpy/` and TF artifacts to `backend/outputs_tf/`. Set `model_type` to `numpy` or `tf` on train/predict to choose the backend.
+
+Below are package-specific notes; the examples remain focused on `interpy_bg`, with `fivedreg_tf` usage analogous (using `outputs_tf` and TF classes), and `interpy_synth` providing synthetic data.
 
 ## Features
 
-- Feedforward neural networks with customizable hidden layers
-- L2 regularization
+- Feedforward neural networks with customizable hidden layers (NumPy and TF)
+- L2 regularization; Adam optimisation with optional early stopping, LR decay, batch size, grad clipping
 - Training with RMSE tracking and validation split
-- Normalization of input data
-- Save/load trained weights, normalization values, and model metadata
-- Simple plotting of training/validation loss and predictions
+- Normalization of input data; save/load trained weights, normalization values, and model metadata
+- Plotting of training/validation loss and predictions (headless Agg backend)
 - Dataset validation/standardisation with train/val/test splits
-- Synthetic 5D data generator utilities (via `interpy_synth` dependency)
+- Synthetic 5D data generator utilities via `interpy_synth`
 
 ## Installation
 
-Local/dev (installs interpy_bg + interpy_synth + fivedreg_tf editable):
+Local/dev (installs interpy_bg + interpy_synth + fivedreg_tf from PyPI):
 
 ```bash
 cd backend
@@ -26,8 +31,9 @@ pip install -r requirements.lock
 PyPI:
 
 ```bash
-pip install interpy_bg         # NumPy backend (pulls interpy-synth)
-pip install fivedreg_tf        # TF backend (pulls interpy-synth + tensorflow)
+pip install interpy_bg          # NumPy backend (pulls interpy-synth)
+pip install fivedreg_tf         # TF backend (pulls interpy-synth + tensorflow)
+pip install interpy-synth       # Synthetic data helpers
 ```
 
 Docker:

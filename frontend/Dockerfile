@@ -7,11 +7,11 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 FROM base AS deps
-COPY frontend/package*.json ./ 
+COPY package*.json ./ 
 RUN npm ci --include=dev
 
 FROM deps AS build
-COPY frontend ./
+COPY . ./
 RUN npm run build
 
 FROM base AS runtime

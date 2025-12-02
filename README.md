@@ -50,7 +50,7 @@ npm run dev          # http://localhost:3000
 - CI: GitHub Actions in `.github/workflows/ci.yml` runs backend tests and frontend lint/build/tests on pushes/PRs.
 
 ## Docker
-- Build images: `./scripts/docker_build.sh`
+- Build images: `./scripts/docker_build.sh` (uses `--platform=linux/amd64` so TensorFlow wheels resolve on Apple Silicon)
 - Run stack: `./scripts/docker_up.sh` (backend on :8000, frontend on :3000)
 - Stop stack: `./scripts/docker_down.sh`
 - Compose file: `docker-compose.yml`

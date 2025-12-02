@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
-
-FROM python:3.10-slim AS base
+ARG PYTHON_VERSION=3.11
+FROM python:${PYTHON_VERSION}-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -14,8 +14,8 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
-# Copy source first so editable installs work
-COPY backend /app
+# Copy backend source into the image (context is already backend/)
+COPY . /app
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt

@@ -48,11 +48,20 @@ def get_app_logger():
 app_logger = get_app_logger()
 
 def clear_directories():
-    """Helper to clean uploads and both NumPy/TF outputs folders."""
+    """Helper to clean uploads and both NumPy/TF outputs folders without removing mount points."""
+    def _clear_dir(path: str) -> None:
+        os.makedirs(path, exist_ok=True)
+        for entry in os.scandir(path):
+            try:
+                if entry.is_dir(follow_symlinks=False):
+                    shutil.rmtree(entry.path)
+                else:
+                    os.unlink(entry.path)
+            except OSError as exc:
+                app_logger.warning(f"Could not remove {entry.path}: {exc}")
+
     for d in [UPLOAD_DIR, OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR]:
-        if os.path.exists(d):
-            shutil.rmtree(d)
-        os.makedirs(d, exist_ok=True)
+        _clear_dir(d)
     app_logger.info("Cleared uploads and outputs directories.")
 
 # ----------------------

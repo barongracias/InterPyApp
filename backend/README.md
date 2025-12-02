@@ -151,6 +151,33 @@ path = synthetic_5d_pickle("outputs_numpy/synth.pkl", n=1000, seed=42)
 - `/reset` clears uploads plus both output folders (`backend/outputs_numpy/` and `backend/outputs_tf/`).
 - Plotting uses the headless `Agg` backend in both packages for compatibility with servers/CI.
 
+## Performances and profiling
+
+Two performance scripts exercise the NumPy and TensorFlow backends over multiple dataset sizes, logging throughput, memory, and accuracy metrics:
+
+- NumPy: `python backend/tests/test_performance_numpy.py` (uses `outputs_numpy/size_<n>/`)
+- TensorFlow: `python backend/tests/test_performance_tensorflow.py` (uses `outputs_tf/size_<n>/`)
+
+Each run prints a summary table with train/predict wall time, peak memory (via `tracemalloc`), end-of-training RMSE, and evaluation MSE/R² on a fresh synthetic test set. Artifacts (plots, weights, metadata) are saved per size under the corresponding outputs folder for visual inspection. Review the printed tables and the saved `rmse_vs_epochs.png` / `ytrue_vs_ypred.png` to spot underfitting/overfitting or memory regressions when tuning hyperparameters or changing code.
+
+Latest run (CPU, sizes 1k/5k/10k, 200 epochs, hidden [64,32,16]):
+
+NumPy (`interpy_bg`)
+
+| n    | train_s | pred_s | train_mb | pred_mb | train_rmse | val_rmse | mse      | r2    |
+|------|---------|--------|----------|---------|------------|----------|----------|-------|
+| 1000 | 2.847   | 0.0089 | 3.60     | 1.38    | 0.1624     | 0.1835   | 0.021614 | 0.9234 |
+| 5000 | 6.511   | 0.0070 | 16.33    | 1.33    | 0.1254     | 0.1322   | 0.015862 | 0.9438 |
+| 10000| 11.261  | 0.0073 | 32.52    | 1.33    | 0.1291     | 0.1287   | 0.016535 | 0.9414 |
+
+TensorFlow (`fivedreg_tf`)
+
+| n    | train_s | pred_s | train_mb | pred_mb | train_rmse | val_rmse | mse      | r2    |
+|------|---------|--------|----------|---------|------------|----------|----------|-------|
+| 1000 | 4.454   | 0.0904 | 5.32     | 0.31    | 0.1602     | 0.1685   | 0.024084 | 0.9078 |
+| 5000 | 6.699   | 0.0895 | 5.27     | 0.31    | 0.1236     | 0.1308   | 0.013365 | 0.9488 |
+| 10000| 9.177   | 0.0939 | 5.80     | 0.31    | 0.1106     | 0.1195   | 0.009920 | 0.9620 |
+
 ## Documentation
 
 Full API documentation is hosted on [ReadTheDocs](https://interpyapp.readthedocs.io).

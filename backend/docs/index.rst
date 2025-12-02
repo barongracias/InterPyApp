@@ -93,6 +93,96 @@ TensorFlow backend (`fivedreg_tf`):
     tester = TesterTF(directory="outputs_tf")
     preds = tester.predict([[0.1, 0.2, 0.3, 0.4, 0.5]])
 
+Performances and profiling
+--------------------------
+
+Use the bundled benchmarks to measure throughput, memory, and accuracy:
+
+- NumPy: ``python backend/tests/test_performance_numpy.py`` (writes to ``outputs_numpy/size_<n>/``)
+- TensorFlow: ``python backend/tests/test_performance_tensorflow.py`` (writes to ``outputs_tf/size_<n>/``)
+
+Latest run (CPU, hidden sizes [64, 32, 16], 200 epochs):
+
+.. list-table:: NumPy (interpy_bg)
+   :header-rows: 1
+
+   * - n
+     - train_s
+     - pred_s
+     - train_mb
+     - pred_mb
+     - train_rmse
+     - val_rmse
+     - mse
+     - r2
+   * - 1000
+     - 2.847
+     - 0.0089
+     - 3.60
+     - 1.38
+     - 0.1624
+     - 0.1835
+     - 0.021614
+     - 0.9234
+   * - 5000
+     - 6.511
+     - 0.0070
+     - 16.33
+     - 1.33
+     - 0.1254
+     - 0.1322
+     - 0.015862
+     - 0.9438
+   * - 10000
+     - 11.261
+     - 0.0073
+     - 32.52
+     - 1.33
+     - 0.1291
+     - 0.1287
+     - 0.016535
+     - 0.9414
+
+.. list-table:: TensorFlow (fivedreg_tf)
+   :header-rows: 1
+
+   * - n
+     - train_s
+     - pred_s
+     - train_mb
+     - pred_mb
+     - train_rmse
+     - val_rmse
+     - mse
+     - r2
+   * - 1000
+     - 4.454
+     - 0.0904
+     - 5.32
+     - 0.31
+     - 0.1602
+     - 0.1685
+     - 0.024084
+     - 0.9078
+   * - 5000
+     - 6.699
+     - 0.0895
+     - 5.27
+     - 0.31
+     - 0.1236
+     - 0.1308
+     - 0.013365
+     - 0.9488
+   * - 10000
+     - 9.177
+     - 0.0939
+     - 5.80
+     - 0.31
+     - 0.1106
+     - 0.1195
+     - 0.009920
+     - 0.9620
+
 Contents
 ========
 

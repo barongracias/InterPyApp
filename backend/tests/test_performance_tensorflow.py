@@ -56,10 +56,10 @@ def _run_fivedreg_tf_performance(
             epochs=epochs,
             learning_rate=0.01,
             train_val_split=0.8,
-            batch_size=64,
+            batch_size=None,
             grad_clip=5.0,
-            early_stop_patience=10,
-            lr_decay=0.9,
+            early_stop_patience=None,
+            lr_decay=None,
             seed=seed,
         )
 
@@ -71,7 +71,7 @@ def _run_fivedreg_tf_performance(
         tracemalloc.stop()
 
         tester = TesterTF(directory=str(out_dir))
-        X_test, y_test = synthetic_5d(test_samples, seed=seed + 777)
+        X_test, y_test = synthetic_5d(test_samples, seed=seed + 123)
 
         tracemalloc.start()
         t0 = time.perf_counter()

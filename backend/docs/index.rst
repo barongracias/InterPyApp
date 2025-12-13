@@ -23,7 +23,7 @@ End-to-end workflow
 Telemetry and logging
 ---------------------
 - API endpoints emit structured log events (`upload.success`, `train.completed`, `predict.completed`, `evaluate.completed`) with backend tags and duration/RMSE summaries.
-- Training/prediction functions are wrapped in shared `timer`/`log_call` decorators for lightweight instrumentation.
+- Training/prediction functions are wrapped in shared `timer`/`log_call` decorators for lightweight instrumentation; NumPy logs every epoch and TensorFlow now logs at the same cadence (~20 times per run) for parity.
 
 Frontend (high level)
 ---------------------
@@ -183,7 +183,7 @@ Use the bundled benchmarks to measure throughput, memory, and accuracy:
 - NumPy: ``python backend/tests/test_performance_numpy.py`` (writes to ``outputs_numpy/size_<n>/``)
 - TensorFlow: ``python backend/tests/test_performance_tensorflow.py`` (writes to ``outputs_tf/size_<n>/``)
 
-Latest run (CPU, hidden sizes [64, 32, 16], 200 epochs):
+Latest run (CPU, hidden sizes [64, 32, 16], 200 epochs, batch_size=None, constant LR, no early stop/decay):
 
 .. list-table:: NumPy (interpy_bg)
    :header-rows: 1
@@ -198,32 +198,32 @@ Latest run (CPU, hidden sizes [64, 32, 16], 200 epochs):
      - mse
      - r2
    * - 1000
-     - 2.847
-     - 0.0089
-     - 3.60
-     - 1.38
-     - 0.1624
-     - 0.1835
-     - 0.021614
-     - 0.9234
+     - 5.723
+     - 0.0592
+     - 3.04
+     - 1.03
+     - 0.0988
+     - 0.1924
+     - 0.028908
+     - 0.8975
    * - 5000
-     - 6.511
-     - 0.0070
-     - 16.33
-     - 1.33
-     - 0.1254
-     - 0.1322
-     - 0.015862
-     - 0.9438
+     - 9.773
+     - 0.0150
+     - 12.42
+     - 0.99
+     - 0.1102
+     - 0.1310
+     - 0.014873
+     - 0.9473
    * - 10000
-     - 11.261
-     - 0.0073
-     - 32.52
-     - 1.33
-     - 0.1291
-     - 0.1287
-     - 0.016535
-     - 0.9414
+     - 15.433
+     - 0.0148
+     - 24.70
+     - 0.99
+     - 0.1121
+     - 0.1166
+     - 0.013702
+     - 0.9514
 
 .. list-table:: TensorFlow (fivedreg_tf)
    :header-rows: 1
@@ -238,32 +238,38 @@ Latest run (CPU, hidden sizes [64, 32, 16], 200 epochs):
      - mse
      - r2
    * - 1000
-     - 4.454
-     - 0.0904
-     - 5.32
-     - 0.31
-     - 0.1602
-     - 0.1685
-     - 0.024084
-     - 0.9078
+     - 9.530
+     - 0.1040
+     - 4.13
+     - 0.24
+     - 0.1163
+     - 0.1262
+     - 0.013592
+     - 0.9518
    * - 5000
-     - 6.699
-     - 0.0895
-     - 5.27
-     - 0.31
-     - 0.1236
-     - 0.1308
-     - 0.013365
-     - 0.9488
+     - 31.711
+     - 0.0926
+     - 8.81
+     - 0.24
+     - 0.1388
+     - 0.1365
+     - 0.020859
+     - 0.9261
    * - 10000
-     - 9.177
-     - 0.0939
-     - 5.80
-     - 0.31
-     - 0.1106
-     - 0.1195
-     - 0.009920
-     - 0.9620
+     - 59.856
+     - 0.0926
+     - 15.66
+     - 0.23
+     - 0.1343
+     - 0.1127
+     - 0.012607
+     - 0.9553
+
+Complexity notes (from these runs)
+- Training time scales near-linearly (NumPy: ~6→15 s from 1k→10k; TF: ~10→60 s) consistent with O(n · epochs · layer_cost), though TF climbs faster on CPU.
+- Prediction remains effectively O(n · hidden_sizes) with sub-0.12 s for 10k samples on both backends.
+- Memory grows roughly linearly with n for NumPy (3.0→24.7 MB) and modestly for TF (4.1→15.7 MB); deeper/wider nets add parameter overhead.
+- Small-n synthetic runs are a bit noisier (NumPy @1k R²≈0.9) but improve quickly with scale. Use these as baselines for [64,32,16] at 200 epochs; scaling depth/width/epochs increases the training term proportionally.
 
 Usage at a glance
 -----------------

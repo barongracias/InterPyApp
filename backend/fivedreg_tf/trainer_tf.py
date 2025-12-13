@@ -406,6 +406,13 @@ class TrainerTF:
         train_rmse = [float(v) for v in history.history.get("rmse", [])]
         val_rmse = [float(v) for v in history.history.get("val_rmse", [])]
 
+        # Log epoch summaries at the same cadence as the NumPy trainer (≈20 logs/run)
+        if train_rmse and val_rmse:
+            log_every = max(1, self.epochs // 20)
+            for idx, (tr, va) in enumerate(zip(train_rmse, val_rmse), start=1):
+                if idx == 1 or idx % log_every == 0:
+                    self.logger.info(f"Epoch {idx}/{self.epochs}: train_rmse={tr:.4f}, val_rmse={va:.4f}")
+
         # plots (use best weights if early stopping restored)
         y_pred_val = self.model.predict(X_val, verbose=0)
         plot_loss(train_rmse, val_rmse, "rmse_vs_epochs.png", self.directory)

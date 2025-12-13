@@ -28,8 +28,8 @@ autodoc_default_options = {
     "show-inheritance": True   # Show class inheritance
 }
 
-# Enable autosummary generation
-autosummary_generate = True
+# Enable autosummary generation (stubs are pre-generated in _autosummary)
+autosummary_generate = False
 
 # Templates
 templates_path = ['_templates']

@@ -50,6 +50,7 @@ def benchmark_sizes(sizes=(1000, 5000, 10000), test_samples=500, seed=42, epochs
             beta1=0.9,
             beta2=0.999,
             epsilon=1e-8,
+            activation="relu",
         )
 
         tracemalloc.start()
@@ -67,6 +68,7 @@ def benchmark_sizes(sizes=(1000, 5000, 10000), test_samples=500, seed=42, epochs
             hidden_sizes=[int(x) for x in tester_metadata["hidden_sizes"]],
             Lambda=float(tester_metadata["Lambda"]),
             directory=out_dir,
+            activation="relu",
         )
 
         # ensure artifacts saved for this size

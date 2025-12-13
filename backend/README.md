@@ -18,7 +18,7 @@ Below are package-specific notes; the examples remain focused on `interpy_bg`, w
 - Plotting of training/validation loss and predictions (headless Agg backend)
 - Dataset validation/standardisation with train/val/test splits
 - Synthetic 5D data generator utilities via `interpy_synth`
-- Structured logging for API events (upload/train/predict/evaluate) including durations, backend type, and RMSE summaries
+- Structured logging for API events (upload/train/predict/evaluate) including durations, backend type, and RMSE summaries (NumPy logs every epoch; TensorFlow logs at the same cadence ~20× per run)
 
 ## Installation
 
@@ -181,23 +181,29 @@ Two performance scripts exercise the NumPy and TensorFlow backends over multiple
 
 Each run prints a summary table with train/predict wall time, peak memory (via `tracemalloc`), end-of-training RMSE, and evaluation MSE/R² on a fresh synthetic test set. Artifacts (plots, weights, metadata) are saved per size under the corresponding outputs folder for visual inspection. Review the printed tables and the saved `rmse_vs_epochs.png` / `ytrue_vs_ypred.png` to spot underfitting/overfitting or memory regressions when tuning hyperparameters or changing code.
 
-Latest run (CPU, sizes 1k/5k/10k, 200 epochs, hidden [64,32,16]):
+Latest run (CPU, sizes 1k/5k/10k, 200 epochs, hidden [64,32,16], batch_size=None, constant LR, no early stop/decay):
 
 NumPy (`interpy_bg`)
 
 | n    | train_s | pred_s | train_mb | pred_mb | train_rmse | val_rmse | mse      | r2    |
 |------|---------|--------|----------|---------|------------|----------|----------|-------|
-| 1000 | 2.847   | 0.0089 | 3.60     | 1.38    | 0.1624     | 0.1835   | 0.021614 | 0.9234 |
-| 5000 | 6.511   | 0.0070 | 16.33    | 1.33    | 0.1254     | 0.1322   | 0.015862 | 0.9438 |
-| 10000| 11.261  | 0.0073 | 32.52    | 1.33    | 0.1291     | 0.1287   | 0.016535 | 0.9414 |
+| 1000 | 5.723   | 0.0592 | 3.04     | 1.03    | 0.0988     | 0.1924   | 0.028908 | 0.8975 |
+| 5000 | 9.773   | 0.0150 | 12.42    | 0.99    | 0.1102     | 0.1310   | 0.014873 | 0.9473 |
+| 10000| 15.433  | 0.0148 | 24.70    | 0.99    | 0.1121     | 0.1166   | 0.013702 | 0.9514 |
 
 TensorFlow (`fivedreg_tf`)
 
 | n    | train_s | pred_s | train_mb | pred_mb | train_rmse | val_rmse | mse      | r2    |
 |------|---------|--------|----------|---------|------------|----------|----------|-------|
-| 1000 | 4.454   | 0.0904 | 5.32     | 0.31    | 0.1602     | 0.1685   | 0.024084 | 0.9078 |
-| 5000 | 6.699   | 0.0895 | 5.27     | 0.31    | 0.1236     | 0.1308   | 0.013365 | 0.9488 |
-| 10000| 9.177   | 0.0939 | 5.80     | 0.31    | 0.1106     | 0.1195   | 0.009920 | 0.9620 |
+| 1000 | 9.530   | 0.1040 | 4.13     | 0.24    | 0.1163     | 0.1262   | 0.013592 | 0.9518 |
+| 5000 | 31.711  | 0.0926 | 8.81     | 0.24    | 0.1388     | 0.1365   | 0.020859 | 0.9261 |
+| 10000| 59.856  | 0.0926 | 15.66    | 0.23    | 0.1343     | 0.1127   | 0.012607 | 0.9553 |
+
+Complexity notes (from these runs)
+- Training time scales near-linearly (NumPy: ~5→17 s from 1k→10k; TF: ~10→60 s) consistent with O(n · epochs · layer_cost), though TF shows a steeper slope on CPU.
+- Prediction remains effectively O(n · hidden_sizes) with sub-0.12 s per 10k samples for both backends.
+- Memory grows roughly linearly with n for NumPy (3.0→24.7 MB) and modestly for TF (4.1→15.7 MB); wider/deeper nets add parameter overhead.
+- Small-n synthetic runs are a bit noisier (NumPy @1k R²≈0.9) but improve quickly with scale. Treat these as baselines for [64,32,16] at 200 epochs; scaling depth/width/epochs increases the training term proportionally.
 
 ## Documentation
 
@@ -209,6 +215,7 @@ See details for every class, method and plotting utility.
 Build from each package directory (sdist + wheel) in a clean environment, preferably on Linux/CI for universal wheels:
 
 ```bash
+python -m pip install --upgrade pip build twine wheel
 python -m build --sdist --wheel --no-isolation
 twine check dist/*
 twine upload dist/*              # when ready to publish

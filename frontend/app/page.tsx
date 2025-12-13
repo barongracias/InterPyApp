@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Upload, Settings, Zap, BarChart3, Sparkles, CheckCircle, Loader, Info } from "lucide-react";
 import { DatasetStats, TrainResponse, uploadDataset, trainModel, predictModel, resetBackend, healthCheck } from "../lib/api";
 
@@ -63,7 +63,8 @@ export default function Home() {
   const [healthStatus, setHealthStatus] = useState<"checking" | "ok" | "error">("checking");
   const [datasetStats, setDatasetStats] = useState<DatasetStats | null>(null);
   const [uploadComplete, setUploadComplete] = useState(false);
-  const [uploadHistory, setUploadHistory] = useState<string[]>([]);
+  type UploadEntry = { original: string; stored?: string };
+  const [uploadHistory, setUploadHistory] = useState<UploadEntry[]>([]);
   const [modelType, setModelType] = useState<"numpy" | "tf">("numpy");
   const [plotKey, setPlotKey] = useState<number>(Date.now());
   const [showNetworkOptions, setShowNetworkOptions] = useState(false);
@@ -91,6 +92,11 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
     return artifacts.filter((name) => !name.includes("tf"));
   };
 
+  const goToPrevStep = () => {
+    setInlineMessage(null);
+    setStep((prev) => Math.max(1, prev - 1));
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
     if (selectedFile && selectedFile.size > MAX_UPLOAD_BYTES) {
@@ -116,14 +122,23 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
     setInlineMessage(null);
     try {
       const data = await uploadDataset(backend, file);
-      setUploadMessage(`✅ Uploaded: ${data.original_filename}`);
+      const originalName = data.original_filename || file.name;
+      const storedName = data.stored_filename || (data as { path?: string }).path;
+      if (!storedName) {
+        throw new Error("Upload response missing stored filename; cannot start training.");
+      }
+      setUploadMessage(`✅ Uploaded: ${originalName}`);
       setDatasetStats(data.stats || null);
-      setFileName(data.original_filename);
-      setStoredFilename(data.stored_filename);
+      setFileName(originalName);
+      setStoredFilename(storedName);
+      latestStoredRef.current = storedName;
       setUploadComplete(true);
-      setUploadHistory((prev) => [data.original_filename, ...prev].slice(0, 3));
+      setUploadHistory((prev) => [{ original: originalName, stored: storedName }, ...prev].slice(0, 3));
       setInlineMessage({ type: "success", text: "Upload successful, dataset stats ready" });
     } catch (error) {
+      setUploadComplete(false);
+      setStoredFilename("");
+      latestStoredRef.current = "";
       setInlineMessage({ type: "error", text: `Upload failed - ${error instanceof Error ? error.message : "is the backend running?"}` });
     } finally {
       setIsUploading(false);
@@ -221,6 +236,23 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
   const flattenPreds = (preds: Predictions) =>
     Array.isArray(preds) ? preds.flat().filter((v): v is number => typeof v === "number" && Number.isFinite(v)) : [];
   const flatPreds = useMemo(() => flattenPreds(predictions), [predictions]);
+  const latestStoredRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!storedFilename && uploadHistory.length && uploadHistory[0]?.stored) {
+      setStoredFilename(uploadHistory[0].stored || "");
+      latestStoredRef.current = uploadHistory[0].stored || "";
+    }
+  }, [uploadHistory, storedFilename]);
+
+  // Clear test state/predictions when switching backend to avoid showing stale results
+  useEffect(() => {
+    setPredictions(null);
+    setTestFile(null);
+    setTestFileReady(false);
+    setTestFileUploading(false);
+    setTestMode("values");
+  }, [modelType]);
 
   const handleReset = async () => {
     try {
@@ -269,17 +301,22 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
   };
 
   const handleTrain = async () => {
-    if (!uploadComplete || !storedFilename) {
+    const trainingFile = storedFilename || latestStoredRef.current || uploadHistory[0]?.stored;
+    if (!trainingFile) {
       setInlineMessage({ type: "error", text: "Upload a dataset before training." });
       return;
     }
     if (!hyperparamsValid) return;
+    setPredictions(null);
+    setTestFile(null);
+    setTestFileReady(false);
+    setTestFileUploading(false);
     setTrainLoading(true);
     setTrainDurationMs(null);
     setInlineMessage(null);
     const started = performance.now();
     const formData = new FormData();
-    formData.append("pkl_filename", storedFilename);
+    formData.append("pkl_filename", trainingFile);
     formData.append("hidden_sizes", hiddenSizes);
     formData.append("Lambda", Lambda);
     formData.append("epochs", epochs);
@@ -356,12 +393,20 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
       <div className="max-w-4xl mx-auto px-4 py-12">
         {step > 1 && (
           <div className="mb-8 flex justify-end">
-            <button
-              onClick={handleReset}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 font-medium"
-            >
-              ← Start Over
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={goToPrevStep}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 font-medium"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all duration-200 font-medium"
+              >
+                Reset
+              </button>
+            </div>
           </div>
         )}
 
@@ -600,10 +645,10 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
                     <div className="p-4 rounded-2xl border border-gray-200 bg-white shadow-sm">
                       <h4 className="text-sm font-semibold text-gray-800 mb-2">Recent uploads</h4>
                       <ul className="space-y-1 text-sm text-gray-700">
-                        {uploadHistory.map((name) => (
-                          <li key={name} className="flex items-center">
+                        {uploadHistory.map((entry, idx) => (
+                          <li key={entry.stored || `${entry.original}-${idx}`} className="flex items-center">
                             <span className="mr-2 text-indigo-500">•</span>
-                            <span className="truncate">{name}</span>
+                            <span className="truncate">{entry.original}</span>
                           </li>
                         ))}
                       </ul>
@@ -665,7 +710,7 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
               </div>
               {modelType === "tf" && (
                 <p className="mb-6 text-sm text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2">
-                  TensorFlow uses your activation/init and Adam betas/epsilon (LeakyReLU adds a LeakyReLU layer). Keep learning rate modest; CPU-only build.
+                  TensorFlow uses defined activation/init and Adam betas/epsilon. Keep learning rate modest on CPU-only builds.
                 </p>
               )}
 

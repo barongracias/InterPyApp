@@ -89,7 +89,8 @@ Hyperparameter guide (UI/API)
 - `seed`: Set for deterministic initialisation/shuffling; leave unset for nondeterministic runs.
 
 ### FastAPI usage
-- `/train` supports `model_type=tf` to train and save TF artifacts into `backend/outputs_tf/` (including TF plots) when running the API.
+- `/train` supports `model_type=tf` to train and save TF artifacts into `backend/outputs_tf/` (including TF plots) when running the API or the queued worker.
 - `/predict` accepts `model_type=tf` to run predictions using the TF model.
 - `/artifacts/{filename}` serves TF artifacts (`model_tf.keras`, `normalisation_values_tf.npz`, `tf_model_metadata.json`) as well as NumPy ones.
 - `/upload` is content-type checked and stores pickle uploads with UUID-prefixed filenames; use the returned `stored_filename` when calling `/train`.
+- When `REDIS_URL` is set, `/train` pings Redis and enqueues an RQ job (`/jobs/{id}` reports status/results); if Redis is unavailable or enqueue fails, training logs a warning and runs synchronously.

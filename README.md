@@ -17,7 +17,7 @@ Full-stack project for 5D → 1D interpolation. Includes a FastAPI backend (with
 
 ## What the app does (end-to-end)
 - Upload a `.pkl` file containing `X` (n,5) and `y` (n,1) or generate synthetic data. Uploads are content-type checked and stored with UUID-prefixed filenames; use the returned `stored_filename` for training/prediction calls.
-- Train a 5D→1D regressor using either NumPy (`interpy_bg`) or TensorFlow (`fivedreg_tf`) backends (TensorFlow backend is installed by default).
+- Train a 5D→1D regressor using either NumPy (`interpy_bg`) or TensorFlow (`fivedreg_tf`) backends (TensorFlow backend is installed by default). When `REDIS_URL` is set, `/train` pings Redis and enqueues an RQ job (returns `job_id`; check `/jobs/{job_id}` for status/result). If Redis is unavailable or enqueue fails, `/train` logs a warning and runs synchronously.
 - Track RMSE and metadata; save artifacts (weights, normalisation stats, metadata JSON) and plots (RMSE vs epochs, predicted vs true). Structured logs emit timings and RMSE summaries tagged by backend.
 - Make predictions from arrays or `.pkl` inputs, and download artifacts/plots via the API/Frontend.
 
@@ -33,7 +33,7 @@ uvicorn main:app --reload             # start FastAPI on :8000
 ```
 
 Key endpoints (see `backend/main.py`):
-- `/health`, `/upload`, `/train`, `/predict`, `/plots/{file}`, `/artifacts/{file}`, `/reset`
+- `/health`, `/upload`, `/train`, `/jobs/{id}`, `/predict`, `/plots/{file}`, `/artifacts/{file}`, `/reset`
 - `/evaluate` accepts a `.pkl` with `X` and `y` and returns RMSE (prefers NumPy artifacts, falls back to TF)
 - `/train` and `/predict` accept `model_type` of `numpy` or `tf`
 
@@ -95,7 +95,7 @@ Applicability:
 
 ## Docker
 - Build images: `./scripts/docker_build.sh` (uses `--platform=linux/amd64` so TensorFlow wheels resolve on Apple Silicon)
-- Run stack: `./scripts/docker_up.sh` (backend on :8000, frontend on :3000)
+- Run stack: `./scripts/docker_up.sh` (backend on :8000, frontend on :3000, redis + worker for job queue)
 - Stop stack: `./scripts/docker_down.sh`
 - Compose file: `docker-compose.yml`
 - Frontend env example: `frontend/.env.example` (API URLs point to `backend` service). GPU is not required; TensorFlow uses the CPU build.

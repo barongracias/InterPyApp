@@ -5,7 +5,7 @@ This backend hosts the FastAPI service (`main.py`) plus three installable packag
 - `fivedreg_tf`: TensorFlow implementation mirroring the NumPy API (pip: `fivedreg_tf`)
 - `interpy_synth`: Synthetic data generator shared by both backends (pip: `interpy-synth`)
 
-`main.py` exposes `/upload`, `/train`, `/predict`, `/artifacts`, `/plots`, `/evaluate`, and `/reset`, writing NumPy artifacts to `backend/outputs_numpy/` and TF artifacts to `backend/outputs_tf/`. Set `model_type` to `numpy` or `tf` on train/predict to choose the backend. `/evaluate` returns RMSE on a supplied X/y pickle and prefers NumPy artifacts, falling back to TF if present. Uploads are content-type checked and stored with UUID-prefixed filenames; use `stored_filename` from `/upload` when calling `/train`.
+`main.py` exposes `/upload`, `/train`, `/jobs/{id}`, `/predict`, `/artifacts`, `/plots`, `/evaluate`, and `/reset`, writing NumPy artifacts to `backend/outputs_numpy/` and TF artifacts to `backend/outputs_tf/`. Set `model_type` to `numpy` or `tf` on train/predict to choose the backend. `/evaluate` returns RMSE on a supplied X/y pickle and prefers NumPy artifacts, falling back to TF if present. Uploads are content-type checked and stored with UUID-prefixed filenames; use `stored_filename` from `/upload` when calling `/train`. With `REDIS_URL` set, `/train` pings Redis and enqueues a job via RQ (status via `/jobs/{id}`); if Redis is unavailable or enqueue fails, `/train` logs a warning and runs synchronously.
 
 Below are package-specific notes; the examples remain focused on `interpy_bg`, with `fivedreg_tf` usage analogous (using `outputs_tf` and TF classes), and `interpy_synth` providing synthetic data.
 
@@ -50,6 +50,7 @@ Environment:
 - Configure CORS via `ALLOWED_ORIGINS` (comma-separated), e.g. copy `backend/.env.example`.
 - CPU-only: TensorFlow backend is required and uses the CPU build.
 - For reproducibility, prefer `requirements.lock`.
+- Async training (optional): set `REDIS_URL` (e.g., `redis://redis:6379/0`) to enable Redis/RQ job queue; run the worker (`python worker.py` or the Docker Compose `worker` service).
 
 ## Quick Start
 

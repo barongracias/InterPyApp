@@ -2,8 +2,4 @@ sphinx
 sphinx-autodoc-typehints
 sphinx-rtd-theme
 sphinx-autosummary-accessors
-sphinx
-sphinx-autodoc-typehints
-sphinx-rtd-theme
-sphinx-autosummary-accessors
 docutils>=0.21.2,<0.22

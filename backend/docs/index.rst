@@ -32,6 +32,11 @@ Frontend (high level)
 - Trigger training, view summaries, and download plots/artifacts.
 - Run predictions from values or `.pkl` test files; switch between NumPy/TF models.
 
+.. toctree::
+   :maxdepth: 1
+
+   architecture
+
 Hyperparameter guide (UI/API)
 -----------------------------
 - ``hidden_sizes``: Layer widths per hidden layer; more/larger layers add capacity, training time, and overfitting risk.
@@ -97,7 +102,7 @@ Usage at a glance
 -----------------
 - Install backend deps: ``pip install -r requirements.lock`` (includes TensorFlow CPU build; Python 3.11+ required); then install packages editable if developing.
 - Run API: ``uvicorn main:app --reload`` from ``backend/``.
-- Train: POST to ``/upload`` then ``/train`` (choose ``model_type=numpy``/``tf``); predict via ``/predict``.
+- Train: POST to ``/upload`` then ``/train`` (choose ``model_type=numpy``/``tf``); predict via ``/predict``. When ``REDIS_URL`` is set, `/train` pings Redis and enqueues a job (status via `/jobs/{id}`); if Redis is unavailable or enqueue fails, it logs a warning and runs synchronously.
 - Frontend: ``npm install && npm run dev`` in ``frontend/`` (or ``./scripts/run_local.sh`` to run both).
 
 Deployment (quick)

@@ -30,9 +30,7 @@ Usage
 API
 ---
 
-.. autosummary::
-   :toctree: _autosummary
-   :recursive:
-
-   interpy_synth.synthetic_5d
-   interpy_synth.synthetic_5d_pickle
+.. automodule:: interpy_synth.synthetic
+   :members:
+   :undoc-members:
+   :show-inheritance:

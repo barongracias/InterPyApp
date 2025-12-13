@@ -17,16 +17,30 @@ interpy_bg provides:
 - Logging configuration (`logger.py`)
 - Synthetic data generation via the companion `interpy_synth` package (installed as a dependency)
 
-Submodules
-----------
+API
+---
 
-.. autosummary::
-   :toctree: _autosummary
-   :caption: Core Modules
-   :recursive:
+.. automodule:: interpy_bg.neural_network
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-   interpy_bg.neural_network
-   interpy_bg.trainer
-   interpy_bg.tester
-   interpy_bg.plotter
-   interpy_bg.logger
+.. automodule:: interpy_bg.trainer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: interpy_bg.tester
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: interpy_bg.plotter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: interpy_bg.logger
+   :members:
+   :undoc-members:
+   :show-inheritance:

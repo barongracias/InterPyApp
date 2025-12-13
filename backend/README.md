@@ -207,7 +207,7 @@ Complexity notes (from these runs)
 
 ## Documentation
 
-Full API documentation is hosted on [ReadTheDocs](https://interpyapp.readthedocs.io).
+Full API documentation is hosted on [ReadTheDocs](https://interpyapp.readthedocs.io/en/latest/index.html).
 See details for every class, method and plotting utility.
 
 ## Packaging (PyPI)

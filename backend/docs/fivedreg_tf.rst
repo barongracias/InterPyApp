@@ -15,20 +15,38 @@ fivedreg_tf provides:
 - Plotting and logging helpers (`plotter.py`, `logger.py`, `utils.py`)
 - Synthetic data examples rely on the shared `interpy_synth` package.
 
-Submodules
-----------
+API
+---
 
-.. autosummary::
-   :toctree: _autosummary
-   :caption: Core Modules
-   :recursive:
+.. automodule:: fivedreg_tf.tf_model
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-   fivedreg_tf.tf_model
-   fivedreg_tf.trainer_tf
-   fivedreg_tf.tester_tf
-   fivedreg_tf.plotter
-   fivedreg_tf.logger
-   fivedreg_tf.utils
+.. automodule:: fivedreg_tf.trainer_tf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: fivedreg_tf.tester_tf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: fivedreg_tf.plotter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: fivedreg_tf.logger
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: fivedreg_tf.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Ops notes
 ---------

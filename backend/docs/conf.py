@@ -31,6 +31,13 @@ autodoc_default_options = {
 # Enable autosummary generation (stubs are pre-generated in _autosummary)
 autosummary_generate = False
 
+# Show members by default so automodule pages include full API surface
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": False,
+    "show-inheritance": True,
+}
+
 # Templates
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']

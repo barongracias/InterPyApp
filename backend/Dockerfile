@@ -12,7 +12,7 @@ ENV PATH="${VENV_PATH}/bin:${PATH}"
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl libgomp1 && rm -rf /var/lib/apt/lists/*
 
 # Copy backend source into the image (context is already backend/)
 COPY . /app

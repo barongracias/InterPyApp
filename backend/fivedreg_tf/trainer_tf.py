@@ -32,6 +32,11 @@ class TrainerTF:
         learning_rate: float = 0.01,
         train_val_split: float = 0.8,
         seed: Optional[int] = None,
+        activation: str = "relu",
+        weight_init: str = "auto",
+        beta1: float = 0.9,
+        beta2: float = 0.999,
+        epsilon: float = 1e-8,
         early_stop_patience: Optional[int] = None,
         lr_decay: Optional[float] = None,
         lr_decay_patience: int = 10,
@@ -49,6 +54,11 @@ class TrainerTF:
             learning_rate: Initial learning rate for Adam.
             train_val_split: Fraction of data used for training; remainder is validation.
             seed: Random seed for deterministic weight initialisation and shuffling.
+            activation: Hidden-layer activation (relu, leakyrelu, tanh, sigmoid).
+            weight_init: Weight initializer ("auto", "he", "xavier").
+            beta1: Adam first-moment decay.
+            beta2: Adam second-moment decay.
+            epsilon: Adam numerical stability term.
             early_stop_patience: Number of epochs to wait for validation improvement before
                 stopping; ``None`` disables early stopping.
             lr_decay: Multiplicative factor applied when validation loss plateaus; ``None``
@@ -71,6 +81,10 @@ class TrainerTF:
             raise ValueError("Learning rate must be positive.")
         if not 0 < train_val_split < 1:
             raise ValueError("train_val_split must be in (0, 1).")
+        if activation.lower() not in {"sigmoid", "tanh", "relu", "leakyrelu"}:
+            raise ValueError("activation must be sigmoid, tanh, relu, or leakyrelu.")
+        if weight_init.lower() not in {"auto", "he", "xavier"}:
+            raise ValueError("weight_init must be auto, he, or xavier.")
         if early_stop_patience is not None and early_stop_patience <= 0:
             raise ValueError("early_stop_patience must be positive if provided.")
         if lr_decay is not None and not (0 < lr_decay < 1):
@@ -81,6 +95,12 @@ class TrainerTF:
             raise ValueError("batch_size must be positive if provided.")
         if grad_clip is not None and grad_clip <= 0:
             raise ValueError("grad_clip must be positive if provided.")
+        if not 0 < beta1 < 1:
+            raise ValueError("beta1 must be between 0 and 1.")
+        if not 0 < beta2 < 1:
+            raise ValueError("beta2 must be between 0 and 1.")
+        if epsilon <= 0:
+            raise ValueError("epsilon must be positive.")
 
         self.directory = directory
         self.hidden_sizes = list(hidden_sizes)
@@ -89,6 +109,8 @@ class TrainerTF:
         self.learning_rate = learning_rate
         self.train_val_split = train_val_split
         self.seed = seed
+        self.activation = activation
+        self.weight_init = weight_init
         self.early_stop_patience = early_stop_patience
         self.lr_decay = lr_decay
         self.lr_decay_patience = lr_decay_patience
@@ -111,13 +133,21 @@ class TrainerTF:
         tf.random.set_seed(seed if seed is not None else 0)
         np.random.seed(seed if seed is not None else 0)
 
-        self.model = build_tf_model(self.hidden_sizes, self.Lambda)
+        self.model = build_tf_model(self.hidden_sizes, self.Lambda, activation=self.activation, weight_init=self.weight_init)
         adam_kwargs = {}
         if self.grad_clip is not None:
             adam_kwargs["clipnorm"] = self.grad_clip
+        optimizer_cls = (
+            tf.keras.optimizers.legacy.Adam
+            if hasattr(tf.keras.optimizers, "legacy")
+            else tf.keras.optimizers.Adam
+        )
         self.model.compile(
-            optimizer=tf.keras.optimizers.Adam(
+            optimizer=optimizer_cls(
                 learning_rate=self.learning_rate,
+                beta_1=beta1,
+                beta_2=beta2,
+                epsilon=epsilon,
                 **adam_kwargs,
             ),
             loss="mse",
@@ -397,6 +427,8 @@ class TrainerTF:
         tf_metadata = {
             "hidden_sizes": self.hidden_sizes,
             "Lambda": self.Lambda,
+            "activation": self.activation,
+            "weight_init": self.weight_init,
             "epochs_configured": self.epochs,
             "epochs_run": len(train_rmse),
             "best_epoch": self.best_epoch,
@@ -405,6 +437,12 @@ class TrainerTF:
             "baseline_rmse": self.baseline_rmse,
             "final_train_r2": self.final_train_r2,
             "final_val_r2": self.final_val_r2,
+            "learning_rate": self.learning_rate,
+            "beta1": float(self.model.optimizer.beta_1.numpy()) if hasattr(self.model.optimizer, "beta_1") else None,
+            "beta2": float(self.model.optimizer.beta_2.numpy()) if hasattr(self.model.optimizer, "beta_2") else None,
+            "epsilon": self.model.optimizer.epsilon if hasattr(self.model.optimizer, "epsilon") else None,
+            "batch_size": self.batch_size,
+            "grad_clip": self.grad_clip,
             "early_stop_patience": self.early_stop_patience,
             "lr_decay": self.lr_decay,
             "seed": self.seed,

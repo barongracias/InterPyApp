@@ -4,7 +4,7 @@ loader:
   packages:
     - interpy_bg
     - interpy_synth
-    - fivedreg
+    - fivedreg_tf
 renderer:
   type: markdown
   filename: README.md

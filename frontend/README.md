@@ -1,13 +1,15 @@
-Next.js frontend for InterPyApp.
+Next.js frontend for InterPyApp (Node.js >= 18.17, Next 14).
 
 ## Run locally
 
 ```bash
 npm install
 cp .env.example .env.local   # adjust API URLs if needed
-npm install
 npm run dev   # http://localhost:3000
 ```
+
+- The UI uses typed API helpers (`frontend/lib/api.ts`) and shows inline validation/server errors via a global error boundary.
+- `/upload` responses include `stored_filename`; this is forwarded automatically when training from the UI.
 
 Environment:
 - `NEXT_PUBLIC_API_URL` / `API_URL`: point to the backend (e.g., `http://localhost:8000` locally, `http://backend:8000` in Docker).

@@ -1,6 +1,7 @@
 # ------------------
 # Specified Files/Folders
 # ------------------
+backend/.venv/
 backend/uploads/
 backend/outputs_numpy/
 backend/outputs_tf/
@@ -30,6 +31,7 @@ __pycache__/
 env/
 venv/
 app_venv/
+.venv/
 *.sqlite3
 
 # Jupyter

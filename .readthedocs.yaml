@@ -13,3 +13,4 @@ python:
     - requirements: backend/docs/requirements.txt
     - path: backend/interpy_bg
     - path: backend/interpy_synth
+    - path: backend/fivedreg_tf

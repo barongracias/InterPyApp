@@ -3,13 +3,19 @@ import shutil
 import pickle
 import numpy as np
 import json
+import time
+import uuid
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, Form
+from typing import List, Optional
+
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
+from fastapi.encoders import jsonable_encoder
+from starlette.concurrency import run_in_threadpool
+
 from interpy_bg.trainer import Trainer
 from interpy_bg.tester import Tester
-from typing import List
 
 # ----------------------
 # DIRECTORIES
@@ -30,6 +36,7 @@ ALLOWED_ARTIFACTS_TF = {
     "tf_model_metadata.json",
 }
 ALLOWED_ARTIFACTS = ALLOWED_ARTIFACTS_NUMPY | ALLOWED_ARTIFACTS_TF
+ALLOWED_CONTENT_TYPES = {"application/octet-stream", "application/x-pickle", "application/python-pickle"}
 
 def get_app_logger():
     """Return a module-level logger for main app utilities."""
@@ -46,6 +53,18 @@ def get_app_logger():
     return logger
 
 app_logger = get_app_logger()
+
+def log_event(action: str, **fields):
+    """Emit a structured log line with a consistent prefix."""
+    try:
+        payload = json.dumps(fields, default=str, sort_keys=True)
+    except Exception as exc:
+        payload = json.dumps({"log_error": str(exc)})
+    app_logger.info(f"event={action} {payload}")
+
+def error_response(status_code: int, detail: str):
+    """Consistent error responses."""
+    return HTTPException(status_code=status_code, detail=detail)
 
 def clear_directories():
     """Helper to clean uploads and both NumPy/TF outputs folders without removing mount points."""
@@ -72,6 +91,7 @@ def clear_directories():
 # ----------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _ensure_dirs()
     # Clean folders on startup
     clear_directories()
     yield
@@ -147,28 +167,38 @@ async def health():
     """
     return {"status": "ok", "version": app.version}
 
+def _ensure_dirs():
+    """Ensure upload/output dirs exist."""
+    for d in (UPLOAD_DIR, OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR):
+        os.makedirs(d, exist_ok=True)
+
 @app.post("/upload")
 async def upload_pickle(file: UploadFile = File(...)):
     """
     Upload a .pkl training or testing file. Temporarily stored in uploads.
     """
-    if not file.filename.endswith(".pkl"):
-        return JSONResponse(status_code=400, content={"error": "Only .pkl files are accepted."})
+    if file.content_type not in ALLOWED_CONTENT_TYPES:
+        raise error_response(400, f"Unsupported content type: {file.content_type}")
+    safe_name = os.path.basename(file.filename or "")
+    if not safe_name.endswith(".pkl"):
+        raise error_response(400, "Only .pkl files are accepted.")
 
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    unique_name = f"{uuid.uuid4().hex}_{safe_name}"
+    file_path = os.path.join(UPLOAD_DIR, unique_name)
     with open(file_path, "wb") as f:
         f.write(await file.read())
     # size check
     if os.path.getsize(file_path) > MAX_UPLOAD_BYTES:
         os.remove(file_path)
-        return JSONResponse(status_code=400, content={"error": "File too large. Limit is 10 MB."})
+        raise error_response(400, "File too large. Limit is 10 MB.")
 
     try:
         stats = Trainer.dataset_stats(file_path)
     except Exception as e:
-        return JSONResponse(status_code=400, content={"error": f"File uploaded but could not parse dataset: {e}"})
+        raise error_response(400, f"File uploaded but could not parse dataset: {e}")
 
-    return {"message": "File uploaded successfully", "path": file_path, "stats": stats}
+    log_event("upload.success", filename=safe_name, stored_name=unique_name, bytes=os.path.getsize(file_path))
+    return {"message": "File uploaded successfully", "stored_filename": unique_name, "original_filename": safe_name, "stats": stats}
 
 @app.post("/train")
 async def train_model(
@@ -181,46 +211,47 @@ async def train_model(
     beta1: float = Form(0.9),
     beta2: float = Form(0.999),
     epsilon: float = Form(1e-8),
-    early_stop_patience: int | None = Form(None),
-    lr_decay: float | None = Form(None),
+    early_stop_patience: Optional[int] = Form(None),
+    lr_decay: Optional[float] = Form(None),
     activation: str = Form("relu"),
     weight_init: str = Form("auto"),
-    batch_size: int | None = Form(64),
-    grad_clip: float | None = Form(5.0),
-    seed: int | None = Form(None),
+    batch_size: Optional[int] = Form(64),
+    grad_clip: Optional[float] = Form(5.0),
+    seed: Optional[int] = Form(None),
     model_type: str = Form("numpy"),
 ):
     """
     Train the neural network model using provided hyperparameters and uploaded .pkl file.
     """
     try:
-        pkl_path = os.path.join(UPLOAD_DIR, pkl_filename)
+        safe_pkl = os.path.basename(pkl_filename)
+        pkl_path = os.path.join(UPLOAD_DIR, safe_pkl)
         if not os.path.exists(pkl_path):
-            return JSONResponse(status_code=400, content={"error": f"File not found: {pkl_filename}"})
+            raise error_response(400, f"File not found: {safe_pkl}")
 
         hidden_sizes_list = [int(x.strip()) for x in hidden_sizes.split(",") if x.strip()]
         model_type = model_type.lower()
         if model_type not in {"numpy", "tf"}:
-            return JSONResponse(status_code=400, content={"error": "model_type must be 'numpy' or 'tf'."})
+            raise error_response(400, "model_type must be 'numpy' or 'tf'.")
         validation_error = _validate_hyperparams(
             hidden_sizes_list, Lambda, epochs, learning_rate, train_val_split, beta1, beta2, epsilon
         )
         if validation_error:
-            return JSONResponse(status_code=400, content={"error": validation_error})
+            raise error_response(400, validation_error)
         if early_stop_patience is not None and early_stop_patience <= 0:
-            return JSONResponse(status_code=400, content={"error": "early_stop_patience must be positive if provided."})
+            raise error_response(400, "early_stop_patience must be positive if provided.")
         if lr_decay is not None and not (0 < lr_decay < 1):
-            return JSONResponse(status_code=400, content={"error": "lr_decay must be between 0 and 1 if provided."})
+            raise error_response(400, "lr_decay must be between 0 and 1 if provided.")
         if activation.lower() not in {"sigmoid", "tanh", "relu", "leakyrelu"}:
-            return JSONResponse(status_code=400, content={"error": "activation must be sigmoid, tanh, relu, or leakyrelu."})
+            raise error_response(400, "activation must be sigmoid, tanh, relu, or leakyrelu.")
         if weight_init.lower() not in {"auto", "he", "xavier"}:
-            return JSONResponse(status_code=400, content={"error": "weight_init must be auto, he, or xavier."})
+            raise error_response(400, "weight_init must be auto, he, or xavier.")
         if batch_size is not None and batch_size <= 0:
-            return JSONResponse(status_code=400, content={"error": "batch_size must be positive if provided."})
+            raise error_response(400, "batch_size must be positive if provided.")
         if grad_clip is not None and grad_clip <= 0:
-            return JSONResponse(status_code=400, content={"error": "grad_clip must be positive if provided."})
+            raise error_response(400, "grad_clip must be positive if provided.")
         if seed is not None and seed < 0:
-            return JSONResponse(status_code=400, content={"error": "seed must be non-negative if provided."})
+            raise error_response(400, "seed must be non-negative if provided.")
 
         if model_type == "numpy":
             trainer = Trainer(
@@ -242,7 +273,16 @@ async def train_model(
                 seed=seed,
             )
 
-            train_loss, val_loss = trainer.train(pkl_path)
+            started = time.monotonic()
+            train_loss, val_loss = await run_in_threadpool(trainer.train, pkl_path)
+            duration_ms = (time.monotonic() - started) * 1000
+            log_event(
+                "train.completed",
+                backend="numpy",
+                duration_ms=round(duration_ms, 2),
+                best_val_rmse=trainer.best_val_rmse,
+                best_epoch=trainer.best_epoch,
+            )
 
             return {
                 "message": "Training completed successfully.",
@@ -275,13 +315,27 @@ async def train_model(
                 learning_rate=learning_rate,
                 train_val_split=train_val_split,
                 seed=seed,
+                activation=activation,
+                weight_init=weight_init,
+                beta1=beta1,
+                beta2=beta2,
+                epsilon=epsilon,
                 early_stop_patience=early_stop_patience,
                 lr_decay=lr_decay,
                 batch_size=batch_size,
                 grad_clip=grad_clip,
             )
 
-            train_loss, val_loss = trainer_tf.train(pkl_path)
+            started = time.monotonic()
+            train_loss, val_loss = await run_in_threadpool(trainer_tf.train, pkl_path)
+            duration_ms = (time.monotonic() - started) * 1000
+            log_event(
+                "train.completed",
+                backend="tf",
+                duration_ms=round(duration_ms, 2),
+                best_val_rmse=trainer_tf.best_val_rmse,
+                best_epoch=trainer_tf.best_epoch,
+            )
 
             return {
                 "message": "Training completed successfully.",
@@ -302,14 +356,14 @@ async def train_model(
             }
 
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        raise error_response(500, str(e))
 
 @app.post("/predict")
 async def predict(
-    hidden_sizes: str = Form(None),  # optional; validated if provided
-    Lambda: float = Form(None),      # optional; validated if provided
-    input_file: UploadFile = File(None),
-    input_values: str = Form(None),
+    hidden_sizes: Optional[str] = Form(None),  # optional; validated if provided
+    Lambda: Optional[float] = Form(None),      # optional; validated if provided
+    input_file: Optional[UploadFile] = File(None),
+    input_values: Optional[str] = Form(None),
     model_type: str = Form("numpy"),
 ):
     """
@@ -322,7 +376,7 @@ async def predict(
     try:
         model_type = model_type.lower()
         if model_type not in {"numpy", "tf"}:
-            return JSONResponse(status_code=400, content={"error": "model_type must be 'numpy' or 'tf'."})
+            raise error_response(400, "model_type must be 'numpy' or 'tf'.")
 
         async def _load_input_from_upload(upload: UploadFile) -> np.ndarray:
             if not upload.filename.endswith(".pkl"):
@@ -348,11 +402,11 @@ async def predict(
             try:
                 from fivedreg_tf.tester_tf import TesterTF
             except Exception as e:
-                return JSONResponse(status_code=500, content={"error": f"TensorFlow backend unavailable: {e}"})
+                raise error_response(500, f"TensorFlow backend unavailable: {e}")
             model_path = os.path.join(OUTPUT_TF_DIR, "model_tf.keras")
             norm_path = os.path.join(OUTPUT_TF_DIR, "normalisation_values_tf.npz")
             if not (os.path.exists(model_path) and os.path.exists(norm_path)):
-                return JSONResponse(status_code=400, content={"error": "TensorFlow model not trained yet. Train a TF model first."})
+                raise error_response(400, "TensorFlow model not trained yet. Train a TF model first.")
             tester_tf = TesterTF(directory=OUTPUT_TF_DIR)
             try:
                 if input_file:
@@ -360,17 +414,20 @@ async def predict(
                 elif input_values:
                     X_arr = _load_input_from_values(input_values)
                 else:
-                    return JSONResponse(status_code=400, content={"error": "Provide either a .pkl file or input values."})
+                    raise error_response(400, "Provide either a .pkl file or input values.")
             except ValueError as e:
-                return JSONResponse(status_code=400, content={"error": str(e)})
-            y_pred = tester_tf.predict(X_arr)
+                raise error_response(400, str(e))
+            started = time.monotonic()
+            y_pred = await run_in_threadpool(tester_tf.predict, X_arr)
+            duration_ms = (time.monotonic() - started) * 1000
+            log_event("predict.completed", backend="tf", samples=len(X_arr), duration_ms=round(duration_ms, 2))
             return {"y_pred": y_pred.tolist(), "model_type": "tf"}
 
         # NumPy model path
         try:
             metadata = Tester.load_metadata(directory=OUTPUT_NUMPY_DIR)
         except FileNotFoundError:
-            return JSONResponse(status_code=400, content={"error": "Model not trained yet. Train a NumPy model first or set model_type=tf."})
+            raise error_response(400, "Model not trained yet. Train a NumPy model first or set model_type=tf.")
 
         trained_hidden_sizes = metadata.get("hidden_sizes")
         trained_lambda = metadata.get("Lambda")
@@ -382,15 +439,9 @@ async def predict(
         if hidden_sizes:
             client_hidden = [int(x.strip()) for x in hidden_sizes.split(",") if x.strip()]
             if client_hidden != [int(x) for x in trained_hidden_sizes]:
-                return JSONResponse(
-                    status_code=400,
-                    content={"error": "Hidden sizes mismatch. Predictions use the trained model architecture. Reset/retrain to change it."},
-                )
+                raise error_response(400, "Hidden sizes mismatch. Predictions use the trained model architecture. Reset/retrain to change it.")
         if Lambda is not None and float(Lambda) != float(trained_lambda):
-            return JSONResponse(
-                status_code=400,
-                content={"error": "Lambda mismatch. Predictions use the trained model configuration. Reset/retrain to change it."},
-            )
+            raise error_response(400, "Lambda mismatch. Predictions use the trained model configuration. Reset/retrain to change it.")
 
         tester = Tester(
             hidden_sizes=[int(x) for x in trained_hidden_sizes],
@@ -406,18 +457,23 @@ async def predict(
             elif input_values:
                 X_arr = _load_input_from_values(input_values)
             else:
-                return JSONResponse(status_code=400, content={"error": "Provide either a .pkl file or input values."})
+                raise error_response(400, "Provide either a .pkl file or input values.")
         except ValueError as e:
-            return JSONResponse(status_code=400, content={"error": str(e)})
+            raise error_response(400, str(e))
 
-        y_pred = tester.predict(X_arr)
+        started = time.monotonic()
+        y_pred = await run_in_threadpool(tester.predict, X_arr)
+        duration_ms = (time.monotonic() - started) * 1000
+        log_event("predict.completed", backend="numpy", samples=len(X_arr), duration_ms=round(duration_ms, 2))
         return {"y_pred": y_pred.tolist()}
 
+    except HTTPException:
+        raise
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        raise error_response(500, str(e))
 
 @app.get("/plots/{filename}")
-async def get_plot(filename: str, model_type: str | None = None):
+async def get_plot(filename: str, model_type: Optional[str] = None):
     """
     Serve saved plots from outputs_numpy (NumPy) or outputs_tf (TF).
     """
@@ -435,7 +491,7 @@ async def get_plot(filename: str, model_type: str | None = None):
         plot_path = os.path.join(directory, filename)
         if os.path.exists(plot_path):
             return FileResponse(plot_path)
-    return JSONResponse(status_code=404, content={"error": f"Plot not found: {filename}"})
+    raise error_response(404, f"Plot not found: {filename}")
 
 @app.get("/artifacts/{filename}")
 async def get_artifact(filename: str):
@@ -443,12 +499,12 @@ async def get_artifact(filename: str):
     Serve saved artifacts (weights, norm values, metadata).
     """
     if filename not in ALLOWED_ARTIFACTS:
-        return JSONResponse(status_code=404, content={"error": f"Artifact not allowed: {filename}"})
+        raise error_response(404, f"Artifact not allowed: {filename}")
     for directory in (OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR):
         artifact_path = os.path.join(directory, filename)
         if os.path.exists(artifact_path):
             return FileResponse(artifact_path)
-    return JSONResponse(status_code=404, content={"error": f"Artifact not found: {filename}"})
+    raise error_response(404, f"Artifact not found: {filename}")
 
 
 @app.post("/evaluate")
@@ -458,14 +514,17 @@ async def evaluate_model(file: UploadFile = File(...)):
     Returns RMSE on the provided dataset.
     """
     try:
-        if not file.filename.endswith(".pkl"):
-            return JSONResponse(status_code=400, content={"error": "Only .pkl files are accepted."})
-        temp_path = os.path.join(UPLOAD_DIR, f"eval_{file.filename}")
+        if file.content_type not in ALLOWED_CONTENT_TYPES:
+            raise error_response(400, f"Unsupported content type: {file.content_type}")
+        safe_name = os.path.basename(file.filename or "")
+        if not safe_name.endswith(".pkl"):
+            raise error_response(400, "Only .pkl files are accepted.")
+        temp_path = os.path.join(UPLOAD_DIR, f"eval_{uuid.uuid4().hex}_{safe_name}")
         with open(temp_path, "wb") as f:
             f.write(await file.read())
         if os.path.getsize(temp_path) > MAX_UPLOAD_BYTES:
             os.remove(temp_path)
-            return JSONResponse(status_code=400, content={"error": "File too large. Limit is 10 MB."})
+            raise error_response(400, "File too large. Limit is 10 MB.")
 
         # ensure trained model exists (prefer numpy if available)
         model_type = "numpy"
@@ -487,17 +546,21 @@ async def evaluate_model(file: UploadFile = File(...)):
             tester = TesterTF(directory=OUTPUT_TF_DIR)
             model_type = "tf"
         else:
-            return JSONResponse(status_code=400, content={"error": "Model not trained yet. Train before evaluating."})
+            raise error_response(400, "Model not trained yet. Train before evaluating.")
 
         # load data to get y
         X, y = Trainer.load_raw_data(temp_path)
         y = y.reshape(-1, 1)
-        y_pred = tester.predict(X)
+        started = time.monotonic()
+        y_pred = await run_in_threadpool(tester.predict, X)
+        duration_ms = (time.monotonic() - started) * 1000
         rmse = float(Trainer.calc_rmse(y, y_pred))
+        log_event("evaluate.completed", backend=model_type, samples=int(len(y)), rmse=rmse, duration_ms=round(duration_ms, 2))
+
         os.remove(temp_path)
         return {"rmse": rmse, "samples": int(len(y)), "model_type": model_type}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        raise error_response(500, str(e))
 
 @app.post("/reset")
 async def reset_directories():

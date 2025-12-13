@@ -3,6 +3,9 @@
 `interpy_bg` is a feedforward neural network library designed for 5D → 1D interpolation.  
 It provides modular classes for defining, training, and testing neural networks, with built-in normalization, RMSE tracking, and plotting utilities.
 
+- Docs: https://interpyapp.readthedocs.io/en/latest/index.html#
+- Source: https://github.com/barongracias/InterPyApp
+
 ## Features
 
 - Feedforward neural networks with customizable hidden layers
@@ -131,6 +134,23 @@ X, y = synthetic_5d(1000, seed=42)
 path = synthetic_5d_pickle("outputs_numpy/synth.pkl", n=1000, seed=42)
 ```
 
+## Hyperparameter guide (UI/API)
+
+- `hidden_sizes`: Layer widths per hidden layer. More/larger layers increase capacity and training time and can overfit small datasets.
+- `Lambda`: L2 regularization strength; higher shrinks weights harder to reduce overfitting but can underfit.
+- `activation`: ReLU default; LeakyReLU avoids dead units; tanh/sigmoid bound outputs but can slow training.
+- `weight_init`: Auto picks He for ReLU/LeakyReLU and Xavier for tanh/sigmoid; override to experiment.
+- `epochs`: Full passes over the data. More epochs can fit better but take longer and may overfit.
+- `learning_rate`: Step size for gradient updates. Higher learns faster but risks divergence; lower is steadier.
+- `train_val_split`: Fraction for training vs validation/early stopping. Smaller training splits can reduce fit quality.
+- `batch_size`: Samples per gradient step. Larger batches smooth updates but use more memory; blank/full-batch is allowed.
+- `grad_clip`: Upper bound on gradient norm to prevent exploding gradients. Lower means more aggressive clipping.
+- `lr_decay`: Multiplier (<1) applied per epoch to the learning rate. Leave unset to keep LR constant.
+- `early_stop_patience`: Stop after this many epochs without validation improvement; lower stops sooner to avoid overfitting.
+- `beta1` / `beta2`: Adam momentum terms for first/second moments. Higher values smooth updates but react slower.
+- `epsilon`: Small constant for numerical stability in Adam; keep default unless debugging NaNs.
+- `seed`: Set for deterministic initialisation/shuffling; leave unset for nondeterministic runs.
+
 ## Tests
 
 - All backend tests live in `backend/tests/` (API, NumPy, TensorFlow, synthetic, performance).
@@ -141,7 +161,7 @@ path = synthetic_5d_pickle("outputs_numpy/synth.pkl", n=1000, seed=42)
 - NumPy training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture, Lambda, activation/init, batch/clip/seed, best metrics incl. R²) into `backend/outputs_numpy/` (when running via the API).
 - TensorFlow training (set `model_type=tf` on `/train`) writes `model_tf.keras`, `normalisation_values_tf.npz`, plots, and `tf_model_metadata.json` into `backend/outputs_tf/` (served alongside NumPy artifacts).
 - Prediction (`/predict` or `Tester.predict`) uses the trained architecture/config in metadata; client-supplied hidden sizes or Lambda are ignored. `/predict` also accepts `model_type` to choose NumPy vs TF.
-- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}` (serves NumPy or TF artifacts from their respective output folders), and `/evaluate` (prefers NumPy artifacts, falls back to TF if present).
+- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats; uploads are content-type checked and stored with UUID-prefixed filenames), `/train`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}`, and `/evaluate` (returns RMSE on a supplied X/y pickle; prefers NumPy artifacts, falls back to TF if present).
 - `/reset` clears uploads plus both output folders (`backend/outputs_numpy/` and `backend/outputs_tf/`).
 - Plotting uses the headless `Agg` backend in both packages for compatibility with servers/CI.
 

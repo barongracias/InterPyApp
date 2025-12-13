@@ -5,7 +5,7 @@ This backend hosts the FastAPI service (`main.py`) plus three installable packag
 - `fivedreg_tf`: TensorFlow implementation mirroring the NumPy API (pip: `fivedreg_tf`)
 - `interpy_synth`: Synthetic data generator shared by both backends (pip: `interpy-synth`)
 
-`main.py` exposes `/upload`, `/train`, `/predict`, `/artifacts`, `/plots`, `/evaluate`, and `/reset`, writing NumPy artifacts to `backend/outputs_numpy/` and TF artifacts to `backend/outputs_tf/`. Set `model_type` to `numpy` or `tf` on train/predict to choose the backend.
+`main.py` exposes `/upload`, `/train`, `/predict`, `/artifacts`, `/plots`, `/evaluate`, and `/reset`, writing NumPy artifacts to `backend/outputs_numpy/` and TF artifacts to `backend/outputs_tf/`. Set `model_type` to `numpy` or `tf` on train/predict to choose the backend. `/evaluate` returns RMSE on a supplied X/y pickle and prefers NumPy artifacts, falling back to TF if present. Uploads are content-type checked and stored with UUID-prefixed filenames; use `stored_filename` from `/upload` when calling `/train`.
 
 Below are package-specific notes; the examples remain focused on `interpy_bg`, with `fivedreg_tf` usage analogous (using `outputs_tf` and TF classes), and `interpy_synth` providing synthetic data.
 
@@ -18,6 +18,7 @@ Below are package-specific notes; the examples remain focused on `interpy_bg`, w
 - Plotting of training/validation loss and predictions (headless Agg backend)
 - Dataset validation/standardisation with train/val/test splits
 - Synthetic 5D data generator utilities via `interpy_synth`
+- Structured logging for API events (upload/train/predict/evaluate) including durations, backend type, and RMSE summaries
 
 ## Installation
 
@@ -32,7 +33,7 @@ PyPI:
 
 ```bash
 pip install interpy_bg          # NumPy backend (pulls interpy-synth)
-pip install fivedreg_tf         # TF backend (pulls interpy-synth + tensorflow)
+pip install fivedreg_tf         # TF backend (pulls interpy-synth + tensorflow-cpu)
 pip install interpy-synth       # Synthetic data helpers
 ```
 
@@ -47,7 +48,7 @@ cd ..
 
 Environment:
 - Configure CORS via `ALLOWED_ORIGINS` (comma-separated), e.g. copy `backend/.env.example`.
-- CPU-only: no GPU required; TensorFlow uses the CPU build.
+- CPU-only: TensorFlow backend is required and uses the CPU build.
 - For reproducibility, prefer `requirements.lock`.
 
 ## Quick Start
@@ -137,19 +138,38 @@ X, y = synthetic_5d(1000, seed=42)
 path = synthetic_5d_pickle("outputs_numpy/synth.pkl", n=1000, seed=42)
 ```
 
+## Hyperparameter guide (UI/API)
+
+- `hidden_sizes`: Layer widths per hidden layer. More/larger layers increase capacity and training time and can overfit small datasets.
+- `Lambda`: L2 regularization strength; higher shrinks weights harder to reduce overfitting but can underfit.
+- `activation`: ReLU default; LeakyReLU avoids dead units; tanh/sigmoid bound outputs but can slow training.
+- `weight_init`: Auto picks He for ReLU/LeakyReLU and Xavier for tanh/sigmoid; override to experiment.
+- `epochs`: Full passes over the data. More epochs can fit better but take longer and may overfit.
+- `learning_rate`: Step size for gradient updates. Higher learns faster but risks divergence; lower is steadier.
+- `train_val_split`: Fraction for training vs validation/early stopping. Smaller training splits can reduce fit quality.
+- `batch_size`: Samples per gradient step. Larger batches smooth updates but use more memory; blank/full-batch is allowed.
+- `grad_clip`: Upper bound on gradient norm to prevent exploding gradients. Lower means more aggressive clipping.
+- `lr_decay`: Multiplier (<1) applied per epoch to the learning rate. Leave unset to keep LR constant.
+- `early_stop_patience`: Stop after this many epochs without validation improvement; lower stops sooner to avoid overfitting.
+- `beta1` / `beta2`: Adam momentum terms for first/second moments. Higher values smooth updates but react slower.
+- `epsilon`: Small constant for numerical stability in Adam; keep default unless debugging NaNs.
+- `seed`: Set for deterministic initialisation/shuffling; leave unset for nondeterministic runs.
+- Applicability: NumPy backend uses all fields; TensorFlow backend honours activation, weight_init, batch_size, grad_clip, lr_decay, early_stop_patience, beta1/beta2/epsilon, learning_rate, hidden_sizes, Lambda, train_val_split, seed.
+
 ## Tests
 
-- All backend tests live in `backend/tests/` (API, NumPy, TensorFlow, synthetic, performance).
+- All backend tests live in `backend/tests/` (API, NumPy, TensorFlow, synthetic, performance). API tests now cover both backends including TensorFlow artifact serving and evaluate flows.
 - Run with `python -m pytest backend/tests`.
 
 ## Notes
 
 - NumPy training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture, Lambda, activation/init, batch/clip/seed, best metrics incl. R²) into `backend/outputs_numpy/` (when running via the API).
-- TensorFlow training (set `model_type=tf` on `/train`) writes `model_tf.keras`, `normalisation_values_tf.npz`, plots, and `tf_model_metadata.json` into `backend/outputs_tf/` (served alongside NumPy artifacts).
+- TensorFlow training (set `model_type=tf` on `/train`) writes `model_tf.keras`, `normalisation_values_tf.npz`, plots, and `tf_model_metadata.json` (includes activation/init, Adam betas/epsilon, batch/clip, learning rate, metrics) into `backend/outputs_tf/` (served alongside NumPy artifacts).
 - Prediction (`/predict` or `Tester.predict`) uses the trained architecture/config in metadata; client-supplied hidden sizes or Lambda are ignored. `/predict` also accepts `model_type` to choose NumPy vs TF.
-- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}` (serves NumPy or TF artifacts from their respective output folders), and `/evaluate` (prefers NumPy artifacts, falls back to TF if present).
+- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats), `/train`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}` (serves NumPy or TF artifacts from their respective output folders), and `/evaluate` (returns RMSE on a supplied X/y pickle; prefers NumPy artifacts, falls back to TF if present).
 - `/reset` clears uploads plus both output folders (`backend/outputs_numpy/` and `backend/outputs_tf/`).
 - Plotting uses the headless `Agg` backend in both packages for compatibility with servers/CI.
+- TensorFlow optimiser: uses `tf.keras.optimizers.legacy.Adam` when available (faster on Apple Silicon per TF warning) and falls back to `tf.keras.optimizers.Adam`.
 
 ## Performances and profiling
 
@@ -182,6 +202,18 @@ TensorFlow (`fivedreg_tf`)
 
 Full API documentation is hosted on [ReadTheDocs](https://interpyapp.readthedocs.io).
 See details for every class, method and plotting utility.
+
+## Packaging (PyPI)
+
+Build from each package directory (sdist + wheel) in a clean environment, preferably on Linux/CI for universal wheels:
+
+```bash
+python -m build --sdist --wheel --no-isolation
+twine check dist/*
+twine upload dist/*              # when ready to publish
+```
+
+Packages: `backend/interpy_synth`, `backend/interpy_bg`, `backend/fivedreg_tf`.
 
 ## License
 

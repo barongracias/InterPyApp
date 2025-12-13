@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import http from "node:http";
 import { once } from "node:events";
+import { describe, test } from "node:test";
 
 // Simple mock backend to mirror the endpoints the UI calls
 const createMockServer = () =>

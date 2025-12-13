@@ -1138,7 +1138,7 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200 space-y-1">
                   <p className="text-sm font-semibold text-blue-700">Train metrics</p>
                   <p className="text-xl font-bold text-blue-900">
-                    RMSE: {trainResult.train_loss_end.toFixed(4)}
+                    RMSE: {trainResult.train_loss_end !== undefined ? trainResult.train_loss_end.toFixed(4) : "–"}
                   </p>
                   {trainResult.final_train_r2 !== undefined && (
                     <p className="text-sm font-semibold text-blue-800">R²: {trainResult.final_train_r2.toFixed(4)}</p>
@@ -1147,7 +1147,7 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
                 <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-2xl border border-purple-200 space-y-1">
                   <p className="text-sm font-semibold text-purple-700">Validation metrics</p>
                   <p className="text-xl font-bold text-purple-900">
-                    RMSE: {trainResult.val_loss_end.toFixed(4)}
+                    RMSE: {trainResult.val_loss_end !== undefined ? trainResult.val_loss_end.toFixed(4) : "–"}
                   </p>
                   {trainResult.final_val_r2 !== undefined && (
                     <p className="text-sm font-semibold text-purple-800">R²: {trainResult.final_val_r2.toFixed(4)}</p>

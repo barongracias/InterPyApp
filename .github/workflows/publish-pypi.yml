@@ -33,6 +33,7 @@ jobs:
       - name: Build packages
         run: |
           set -euo pipefail
+          python -m pip install wheel
           for pkg in backend/interpy_synth backend/interpy_bg backend/fivedreg_tf; do
             echo "Building $pkg"
             (cd "$pkg" && rm -rf dist && python -m build --sdist --wheel --no-isolation)

@@ -43,10 +43,8 @@ def build_tf_model(
         return initializers.glorot_uniform()
 
     model = Sequential(name="fived_regressor")
-    # Explicit pass-through layer so the first Dense sits at index 1 for tests/inspection.
-    model.add(
-        layers.Lambda(lambda x: x, input_shape=(input_dim,), dtype="float32", name="model_input")
-    )
+    # Explicit InputLayer so the first Dense sits at index 1 (visible in model.layers)
+    model.add(layers.InputLayer(input_shape=(input_dim,), dtype="float32", name="model_input"))
     for units in hidden_sizes:
         model.add(
           layers.Dense(

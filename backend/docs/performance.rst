@@ -6,6 +6,8 @@ Benchmarks exercise both backends over multiple dataset sizes, logging wall time
 - NumPy: ``python backend/tests/test_performance_numpy.py`` (writes to ``outputs_numpy/size_<n>/``)
 - TensorFlow: ``python backend/tests/test_performance_tensorflow.py`` (writes to ``outputs_tf/size_<n>/``)
 
+Memory profiling: the scripts wrap both training and prediction in ``tracemalloc`` and print peak MB as ``train_mb``/``pred_mb``. Use those to spot spikes when changing batch size, depth/width, or backend. For deeper native allocations (especially TensorFlow), you can rerun with RSS sampling (e.g., ``psutil``) or enable ``PYTHONTRACEMALLOC=1`` to capture snapshots and identify top allocators.
+
 Latest run (CPU, batch_size=None, constant LR, no early stop/decay)
 -------------------------------------------------------------------
 
@@ -88,6 +90,11 @@ Latest run (CPU, batch_size=None, constant LR, no early stop/decay)
      - 0.1127
      - 0.012607
      - 0.9553
+
+Memory profiling interpretation
+--------------------------------
+
+``train_mb``/``pred_mb`` columns are the tracemalloc peak MB during training and prediction. In these baselines, NumPy training grows roughly linearly with dataset size (about 3→25 MB) while prediction stays ~1 MB; TensorFlow training reaches ~16 MB with prediction near 0.25 MB. No bottleneck was observed here; when changing batch size, network width/depth, or backend, compare new peaks against these to catch regressions or unexpected spikes.
 
 Complexity notes
 ----------------

@@ -181,6 +181,8 @@ Two performance scripts exercise the NumPy and TensorFlow backends over multiple
 
 Each run prints a summary table with train/predict wall time, peak memory (via `tracemalloc`), end-of-training RMSE, and evaluation MSE/R² on a fresh synthetic test set. Artifacts (plots, weights, metadata) are saved per size under the corresponding outputs folder for visual inspection. Review the printed tables and the saved `rmse_vs_epochs.png` / `ytrue_vs_ypred.png` to spot underfitting/overfitting or memory regressions when tuning hyperparameters or changing code.
 
+Memory profiling notes: the scripts wrap both `train` and `predict` in `tracemalloc` to report peak MB; use the printed `train_mb`/`pred_mb` columns to flag spikes when adjusting batch size, depth/width, or switching backends. For deeper investigation of native allocations (e.g. TensorFlow), you can run the same scripts under `psutil`/RSS sampling or `PYTHONTRACEMALLOC=1` to capture snapshots and identify top allocators.
+
 Latest run (CPU, sizes 1k/5k/10k, 200 epochs, hidden [64,32,16], batch_size=None, constant LR, no early stop/decay):
 
 NumPy (`interpy_bg`)
@@ -198,6 +200,8 @@ TensorFlow (`fivedreg_tf`)
 | 1000 | 9.530   | 0.1040 | 4.13     | 0.24    | 0.1163     | 0.1262   | 0.013592 | 0.9518 |
 | 5000 | 31.711  | 0.0926 | 8.81     | 0.24    | 0.1388     | 0.1365   | 0.020859 | 0.9261 |
 | 10000| 59.856  | 0.0926 | 15.66    | 0.23    | 0.1343     | 0.1127   | 0.012607 | 0.9553 |
+
+Memory profiling interpretation: `train_mb`/`pred_mb` are the tracemalloc peak MB for the train and predict phases. Across these runs, NumPy training scales roughly linearly with dataset size (≈3→25 MB) while prediction stays ~1 MB; TF training rises to ≈16 MB with prediction near 0.25 MB. No bottleneck showed up in these baselines; if you widen/deepen networks, increase batch size, or switch hardware, compare new peaks to these to catch regressions or unexpected spikes.
 
 Complexity notes (from these runs)
 - Training time scales near-linearly (NumPy: ~5→17 s from 1k→10k; TF: ~10→60 s) consistent with O(n · epochs · layer_cost), though TF shows a steeper slope on CPU.

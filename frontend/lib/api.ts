@@ -30,6 +30,18 @@ export type TrainResponse = {
   final_train_r2?: number;
   final_val_r2?: number;
   model_type?: "numpy" | "tf";
+  duration_ms?: number;
+};
+
+export type TrainJobResponse = {
+  job_id: string;
+  status: "queued" | "started" | "finished" | "failed";
+  backend?: "numpy" | "tf";
+};
+
+export type JobStatusResponse = TrainJobResponse & {
+  result?: TrainResponse;
+  error?: string;
 };
 
 export type PredictResponse = { y_pred: number[][]; model_type?: "numpy" | "tf" };
@@ -65,12 +77,17 @@ export async function uploadDataset(baseUrl: string, file: File): Promise<Upload
   return handle<UploadResponse>(res);
 }
 
-export async function trainModel(baseUrl: string, formData: FormData): Promise<TrainResponse> {
+export async function trainModel(baseUrl: string, formData: FormData): Promise<TrainResponse | TrainJobResponse> {
   const res = await fetch(`${baseUrl}/train`, {
     method: "POST",
     body: formData,
   });
-  return handle<TrainResponse>(res);
+  return handle<TrainResponse | TrainJobResponse>(res);
+}
+
+export async function getJobStatus(baseUrl: string, jobId: string): Promise<JobStatusResponse> {
+  const res = await fetch(`${baseUrl}/jobs/${jobId}`, { cache: "no-store" });
+  return handle<JobStatusResponse>(res);
 }
 
 export async function predictModel(baseUrl: string, formData: FormData): Promise<PredictResponse> {

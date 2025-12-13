@@ -3,7 +3,18 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Upload, Settings, Zap, BarChart3, Sparkles, CheckCircle, Loader, Info } from "lucide-react";
-import { DatasetStats, TrainResponse, uploadDataset, trainModel, predictModel, resetBackend, healthCheck } from "../lib/api";
+import {
+  DatasetStats,
+  JobStatusResponse,
+  TrainJobResponse,
+  TrainResponse,
+  getJobStatus,
+  healthCheck,
+  predictModel,
+  resetBackend,
+  trainModel,
+  uploadDataset,
+} from "../lib/api";
 
 type Predictions = number[][] | null;
 const HelpTip = ({ text }: { text: string }) => (
@@ -71,18 +82,82 @@ export default function Home() {
   const [showTrainingOptions, setShowTrainingOptions] = useState(false);
   const [trainDurationMs, setTrainDurationMs] = useState<number | null>(null);
   const [predictLoading, setPredictLoading] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<JobStatusResponse["status"] | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const backend = useMemo(() => sanitizeBackend(process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || DEFAULT_BACKEND), []);
   const backendAvailable = healthStatus === "ok";
-const stepLabels: Record<number, string> = {
-  1: "Overview",
-  2: "Upload",
-  3: "Configure",
-  4: "Train",
-  5: "Results",
-  6: "Test",
-};
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+  const stepLabels: Record<number, string> = {
+    1: "Overview",
+    2: "Upload",
+    3: "Configure",
+    4: "Train",
+    5: "Results",
+    6: "Test",
+  };
+  const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+  const isJobResponse = (data: TrainResponse | TrainJobResponse): data is TrainJobResponse => "job_id" in data;
+
+  const clearJobPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => clearJobPolling();
+  }, [clearJobPolling]);
+
+  const startJobPolling = useCallback(
+    (id: string) => {
+      clearJobPolling();
+      setJobId(id);
+      setJobStatus("queued");
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const status = await getJobStatus(backend, id);
+          setJobStatus(status.status);
+          if (status.status === "started") {
+            setInlineMessage({ type: "info", text: "Training job started..." });
+          }
+          if (status.status === "finished") {
+            clearJobPolling();
+            setTrainLoading(false);
+            setJobId(null);
+            const result = status.result;
+            if (result) {
+              const model = (result.model_type || status.backend || "numpy") as "numpy" | "tf";
+              const fallbackPlots = result.plots && result.plots.length ? result.plots : ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"];
+              setTrainResult({ ...result, model_type: model, plots: fallbackPlots });
+              setPlotKey(Date.now());
+              setTrainDurationMs(result.duration_ms ?? null);
+              setStep(5);
+              setInlineMessage({ type: "success", text: "Training completed" });
+            } else {
+              setInlineMessage({ type: "error", text: "Training finished but no result payload returned." });
+            }
+          }
+          if (status.status === "failed") {
+            clearJobPolling();
+            setTrainLoading(false);
+            setJobStatus("failed");
+            setJobId(null);
+            setInlineMessage({ type: "error", text: status.error || "Training job failed" });
+          }
+        } catch (error) {
+          clearJobPolling();
+          setTrainLoading(false);
+          setJobId(null);
+          setJobStatus(null);
+          setInlineMessage({ type: "error", text: error instanceof Error ? error.message : "Failed to fetch job status." });
+        }
+      }, 1500);
+    },
+    [backend, clearJobPolling]
+  );
 
   const filterArtifacts = (artifacts: string[] | undefined, modelType: "numpy" | "tf" | undefined) => {
     if (!artifacts) return [];
@@ -259,6 +334,9 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
       const data = await resetBackend(backend);
       setInlineMessage({ type: "info", text: data.message || "Backend reset" });
 
+      clearJobPolling();
+      setJobId(null);
+      setJobStatus(null);
       setStep(1);
       setFile(null);
       setFileName("");
@@ -295,12 +373,16 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
       setShowNetworkOptions(false);
       setShowTrainingOptions(false);
       setPredictLoading(false);
+      setTrainLoading(false);
     } catch (error) {
       setInlineMessage({ type: "error", text: "Failed to reset the app. Is the backend running?" });
     }
   };
 
   const handleTrain = async () => {
+    clearJobPolling();
+    setJobId(null);
+    setJobStatus(null);
     const trainingFile = storedFilename || latestStoredRef.current || uploadHistory[0]?.stored;
     if (!trainingFile) {
       setInlineMessage({ type: "error", text: "Upload a dataset before training." });
@@ -311,6 +393,7 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
     setTestFile(null);
     setTestFileReady(false);
     setTestFileUploading(false);
+    setTrainResult(null);
     setTrainLoading(true);
     setTrainDurationMs(null);
     setInlineMessage(null);
@@ -334,8 +417,17 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
     if (earlyStop !== "") formData.append("early_stop_patience", earlyStop);
     formData.append("model_type", modelType);
 
+    let asyncJob = false;
     try {
       const data = await trainModel(backend, formData);
+      if (isJobResponse(data)) {
+        asyncJob = true;
+        setJobStatus(data.status);
+        setJobId(data.job_id);
+        setInlineMessage({ type: "info", text: data.status === "queued" ? "Training queued. Waiting for worker..." : "Training started..." });
+        startJobPolling(data.job_id);
+        return;
+      }
       const fallbackPlots =
         data.plots && data.plots.length
           ? data.plots
@@ -345,12 +437,15 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
       setTrainResult({ ...data, plots: fallbackPlots });
       setPlotKey(Date.now());
       setStep(5);
+      setTrainDurationMs(data.duration_ms ?? performance.now() - started);
       setInlineMessage({ type: "success", text: "Training completed" });
     } catch (error) {
+      setTrainDurationMs(performance.now() - started);
       setInlineMessage({ type: "error", text: error instanceof Error ? error.message : "Training failed" });
     } finally {
-      setTrainDurationMs(performance.now() - started);
-      setTrainLoading(false);
+      if (!asyncJob) {
+        setTrainLoading(false);
+      }
     }
   };
 
@@ -1109,10 +1204,19 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
               {trainLoading && (
                 <div className="mt-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3">
-                  <p className="text-indigo-700 font-medium">Training in progress ({epochs} epochs)...</p>
+                  <p className="text-indigo-700 font-medium">
+                    {jobStatus === "queued"
+                      ? "Training job queued. Waiting for worker..."
+                      : jobStatus === "started"
+                      ? "Training job started..."
+                      : `Training in progress (${epochs} epochs)...`}
+                  </p>
                   <div className="mt-2 h-2 rounded-full bg-indigo-100 overflow-hidden">
                     <div className="h-full w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 animate-pulse" />
                   </div>
+                  {jobId && (
+                    <p className="mt-2 text-xs text-indigo-600 font-mono break-all">Job ID: {jobId}</p>
+                  )}
                 </div>
               )}
             </div>

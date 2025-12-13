@@ -548,11 +548,9 @@ async def reset_directories():
     Clears all uploaded files and generated outputs (plots, models, etc.) for both NumPy and TF backends.
     """
     try:
-        # Remove and recreate both directories
-        for directory in [UPLOAD_DIR, OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR]:
-            if os.path.exists(directory):
-                shutil.rmtree(directory)
-            os.makedirs(directory, exist_ok=True)
+        # Avoid removing mount points (Docker bind volumes) by clearing contents only
+        clear_directories()
+        _ensure_dirs()
 
         return {"message": "All uploads and outputs cleared successfully."}
     except Exception as e:

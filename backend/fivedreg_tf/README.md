@@ -20,8 +20,7 @@ pip install .
 ```
 
 Headless environments: plotting is configured with the `Agg` backend, so no display is required.
-GPU is not required or supported; the package depends on `tensorflow-cpu`.
-For reproducibility, install via the pinned `requirements.lock` in `backend/`.
+GPU is not required or supported; on macOS use `tensorflow-macos` (installed automatically via platform marker), and on Linux/Windows use `tensorflow-cpu`. For reproducibility, install via the pinned `requirements.lock` in `backend/` (or platform-specific TF as above).
 
 Docker (whole app):
 

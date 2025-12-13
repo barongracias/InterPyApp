@@ -6,7 +6,7 @@ Used by both the NumPy (`interpy_bg`) and TensorFlow (`fivedreg_tf`) packages, b
 
 - Docs: https://interpyapp.readthedocs.io/en/latest/index.html#
 - Source: https://github.com/barongracias/InterPyApp
-- Version: 0.1.2 (synthetic helpers shared by both backends)
+- Version: 0.1.3 (synthetic helpers shared by both backends)
 
 ## Installation
 

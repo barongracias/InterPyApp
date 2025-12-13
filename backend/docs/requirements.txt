@@ -1,5 +1,5 @@
 sphinx
 sphinx-autodoc-typehints
-sphinx-rtd-theme
+sphinx-rtd-theme>=2.0.0
 sphinx-autosummary-accessors
 docutils>=0.21.2,<0.22

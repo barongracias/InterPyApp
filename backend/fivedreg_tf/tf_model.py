@@ -43,7 +43,7 @@ def build_tf_model(
         return initializers.glorot_uniform()
 
     model = Sequential(name="fived_regressor")
-    model.add(layers.Input(shape=(input_dim,), dtype="float32"))
+    model.add(layers.InputLayer(input_shape=(input_dim,), dtype="float32", name="model_input"))
     for units in hidden_sizes:
         model.add(
           layers.Dense(

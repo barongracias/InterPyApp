@@ -33,7 +33,7 @@ pip install --upgrade pip
 
 echo "Installing backend dependencies (NumPy + TensorFlow)..."
 # Base pinned deps
-pip install fastapi==0.115.5 uvicorn[standard]==0.30.6 python-multipart==0.0.9 numpy==1.26.4 matplotlib==3.8.4 httpx==0.27.2
+pip install fastapi==0.115.5 uvicorn[standard]==0.30.6 python-multipart==0.0.9 numpy==1.26.4 matplotlib==3.8.4 httpx==0.27.2 redis==5.1.1 rq==1.15.1
 pip install -e "${BACKEND_DIR}/interpy_synth" --no-deps
 pip install -e "${BACKEND_DIR}/interpy_bg" --no-deps
 if [ "$(uname -s)" = "Darwin" ]; then

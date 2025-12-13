@@ -33,10 +33,10 @@ jobs:
       - name: Build packages
         run: |
           set -euo pipefail
-          python -m pip install wheel
+          python -m pip install --upgrade pip setuptools wheel
           for pkg in backend/interpy_synth backend/interpy_bg backend/fivedreg_tf; do
             echo "Building $pkg"
-            (cd "$pkg" && rm -rf dist && python -m build --sdist --wheel --no-isolation)
+            (cd "$pkg" && rm -rf dist && python -m build --sdist --wheel)
           done
 
       - name: Twine check

@@ -43,8 +43,8 @@ def build_tf_model(
         return initializers.glorot_uniform()
 
     model = Sequential(name="fived_regressor")
-    # Explicit InputLayer so the first Dense sits at index 1 (visible in model.layers)
-    model.add(layers.InputLayer(input_shape=(input_dim,), dtype="float32", name="model_input"))
+    # Use a stateless Rescaling layer so the first Dense appears at index 1 for inspection/tests.
+    model.add(layers.Rescaling(1.0, input_shape=(input_dim,), dtype="float32", name="model_input"))
     for units in hidden_sizes:
         model.add(
           layers.Dense(

@@ -2,8 +2,7 @@
 
 Full-stack project for 5D → 1D interpolation. Includes a FastAPI backend (with NumPy and TensorFlow backends), a shared synthetic data package, and a Next.js frontend.
 
-- Docs: https://interpyapp.readthedocs.io/en/latest/index.html#
-- Source: https://github.com/barongracias/InterPyApp
+- [Read the Docs](https://interpyapp.readthedocs.io/en/latest/index.html)
 
 ## Repository layout
 - `backend/` — FastAPI app (`main.py`), Python packages, and docs
@@ -110,7 +109,12 @@ Applicability:
 - TensorFlow optimiser: prefers `tf.keras.optimizers.legacy.Adam` when available (avoids slower Apple Silicon path) and falls back to `tf.keras.optimizers.Adam`.
 
 ## Packaging (PyPI)
-Run from each package directory (sdist + universal wheel), ideally in a clean env:
+The three backend packages have been uploaded to PyPI, you can find the links here:
+[interpy_bg](https://pypi.org/project/interpy-bg/)
+[interpy_synth](https://pypi.org/project/interpy-synth/)
+[fivedreg_tf](https://pypi.org/project/fivedreg-tf/)
+
+To build and upload the packages, run from each package directory (sdist + universal wheel), ideally in a clean env and after updating the version number:
 
 ```bash
 python -m build --sdist --wheel --no-isolation

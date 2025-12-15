@@ -1,8 +1,20 @@
 Getting Started
 ===============
 
-Installation (from repo)
-------------------------
+Sources
+-------
+
+GitHub: https://github.com/barongracias/InterPyApp.git
+
+The three backend packages have been uploaded to PyPI, you can find the links here:
+
+- interpy_bg: https://pypi.org/project/interpy-bg/
+- interpy_synth: https://pypi.org/project/interpy-synth/
+- fivedreg_tf: https://pypi.org/project/fivedreg-tf/
+
+
+Installation (from GitHub repo)
+-------------------------------
 
 .. code-block:: bash
 

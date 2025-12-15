@@ -14,8 +14,11 @@ Local one-shot setup/run (backend + frontend)
 ---------------------------------------------
 
 .. code-block:: bash
-    ./scripts/run_local.sh   # creates venv, installs backend (NumPy) + frontend deps, runs uvicorn and next dev
-    # Requires Python 3.11+ (for TensorFlow). On macOS installs tensorflow-macos; on Linux installs tensorflow-cpu. Set PYTHON_BIN=python3.11 if needed.
+
+   ./scripts/run_local.sh
+   # creates venv, installs backend (NumPy) + frontend deps, runs uvicorn and next dev
+   # Requires Python 3.11+ (for TensorFlow). On macOS installs tensorflow-macos; on Linux installs tensorflow-cpu.
+   # Set PYTHON_BIN=python3.11 if needed.
 
 Docker quick start
 ------------------

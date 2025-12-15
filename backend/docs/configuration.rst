@@ -19,7 +19,7 @@ Hyperparameter guide (UI/API)
 - ``seed``: Set for deterministic initialisation/shuffling; leave unset for nondeterministic runs.
 - Applicability: NumPy backend uses all fields; TensorFlow backend honours activation, weight_init, batch_size, grad_clip, lr_decay, early_stop_patience, beta1/beta2/epsilon, learning_rate, hidden_sizes, Lambda, train_val_split, seed. TensorFlow (CPU) is installed by default via the pinned requirements.
 
-Telemetry and logging
+Logging
 ---------------------
 - API endpoints emit structured log events (``upload.success``, ``train.completed``, ``predict.completed``, ``evaluate.completed``) with backend tags and duration/RMSE summaries.
 - Training/prediction functions are wrapped in shared ``timer``/``log_call`` decorators for lightweight instrumentation; NumPy logs every epoch and TensorFlow logs at the same cadence (~20 times per run) for parity.
@@ -42,3 +42,13 @@ Engineering choices & best practices
 - Configurability: hyperparameters exposed via API/UI; CORS via ``ALLOWED_ORIGINS``; backend selectable (``model_type``) at train/predict; frontend/env examples provided.
 - Security/ops: non-root containers, CORS controls, compose healthcheck, CPU-only TF for predictable deploys, explicit ports/env wiring, and scripted local runner (``scripts/run_local.sh``).
 - Docs and source: RTD hosts API/usage docs, GitHub for source; READMEs include links and package-specific notes.
+
+AI/LLM Usage
+------------
+I have used Codex (ChatGPT) in my coursework for the following reasons:
+- Generating documentation (README and RTD), docstrings and general comments around code.
+- Verifying integration between frontend, backend and middleware - primarily in the development of ``main.py``.
+- Generating generic ignore files.
+- Generating unit tests and CI tests.
+- Developing the frontend ``page.tsx``.
+- Reviewing overall project structure for completeness, consistency, accuracy and best practises in software engineering.

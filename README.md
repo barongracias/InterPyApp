@@ -21,6 +21,20 @@ Full-stack project for 5D → 1D interpolation. Includes a FastAPI backend (with
 - Track RMSE and metadata; save artifacts (weights, normalisation stats, metadata JSON) and plots (RMSE vs epochs, predicted vs true). Structured logs emit timings and RMSE summaries tagged by backend.
 - Make predictions from arrays or `.pkl` inputs, and download artifacts/plots via the API/Frontend.
 
+## Docker start
+- Build images: `./scripts/docker_build.sh` (uses `--platform=linux/amd64` so TensorFlow wheels resolve on Apple Silicon)
+- Run stack: `./scripts/docker_up.sh` (backend on :8000, frontend on :3000, redis + worker for job queue)
+- Stop stack: `./scripts/docker_down.sh`
+- Compose file: `docker-compose.yml`
+- Frontend env example: `frontend/.env.example` (API URLs point to `backend` service). GPU is not required; TensorFlow uses the CPU build.
+
+## Local one-shot setup/run (backend + frontend):
+
+```bash
+./scripts/run_local.sh   # creates venv, installs backend (NumPy) + frontend deps, runs uvicorn and next dev
+# Requires Python 3.11+ (for TensorFlow). On macOS installs tensorflow-macos; on Linux installs tensorflow-cpu. Set PYTHON_BIN=python3.11 if needed.
+```
+
 ## Backend quick start
 Requires Python 3.11+ (TensorFlow backend is required; use PYTHON_BIN=python3.11 if needed).
 
@@ -52,13 +66,6 @@ Requires Node.js >= 18.17 (Next.js 14).
 cd frontend
 npm install
 npm run dev          # http://localhost:3000
-```
-
-Local one-shot setup/run (backend + frontend):
-
-```bash
-./scripts/run_local.sh   # creates venv, installs backend (NumPy) + frontend deps, runs uvicorn and next dev
-# Requires Python 3.11+ (for TensorFlow). On macOS installs tensorflow-macos; on Linux installs tensorflow-cpu. Set PYTHON_BIN=python3.11 if needed.
 ```
 
 ## Frontend UI (what you can do)
@@ -93,13 +100,6 @@ Applicability:
 - Frontend: `npm run lint` and `npm test` (Node test runner; includes a mocked backend integration flow)
 - CI: GitHub Actions in `.github/workflows/ci.yml` runs backend tests and frontend lint/build/tests on pushes/PRs.
 
-## Docker
-- Build images: `./scripts/docker_build.sh` (uses `--platform=linux/amd64` so TensorFlow wheels resolve on Apple Silicon)
-- Run stack: `./scripts/docker_up.sh` (backend on :8000, frontend on :3000, redis + worker for job queue)
-- Stop stack: `./scripts/docker_down.sh`
-- Compose file: `docker-compose.yml`
-- Frontend env example: `frontend/.env.example` (API URLs point to `backend` service). GPU is not required; TensorFlow uses the CPU build.
-
 ## Ops & security notes
 - Containers run non-root; backend has a healthcheck via compose.
 - Prefer `requirements.lock` for reproducible backend installs; `npm ci` for frontend (package-lock present).
@@ -123,3 +123,12 @@ Packages: `backend/interpy_synth`, `backend/interpy_bg`, `backend/fivedreg_tf`. 
 ## Documentation
 - Sphinx docs: `cd backend/docs && make html`
 - Read the Docs configuration: `.readthedocs.yaml`
+
+## AI/LLM Usage
+I have used Codex (ChatGPT) in my coursework for the following reasons:
+- Generating documentation (README and RTD), docstrings and general comments around code.
+- Verifying integration between frontend, backend and middleware - primarily in the development of `main.py`.
+- Generating generic ignore files.
+- Generating unit tests and CI tests.
+- Developing the frontend `page.tsx`.
+- Reviewing overall project structure for completeness, consistency, accuracy and best practises in software engineering.

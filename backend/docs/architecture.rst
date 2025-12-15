@@ -1,6 +1,8 @@
 Architecture and Ops
 ====================
 
+This section describes how the backend executes training jobs, manages asynchronous work and is operated in development and production. It covers the Redis-backed job queue and worker model, fallback synchronous execution for local use, shared artifact storage and the observability and deployment controls used to run and monitor the system reliably.
+
 Job queue (training)
 --------------------
 - ``/train`` pings Redis and enqueues training jobs to Redis/RQ when ``REDIS_URL`` is set; otherwise it runs synchronously (useful for local dev/tests). If the ping/enqueue fails, the API logs a warning and runs synchronously as a fallback.

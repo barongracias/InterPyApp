@@ -45,7 +45,9 @@ Engineering choices & best practices
 
 AI/LLM Usage
 ------------
+
 I have used Codex (ChatGPT) in my coursework for the following reasons:
+
 - Generating documentation (README and RTD), docstrings and general comments around code.
 - Verifying integration between frontend, backend and middleware - primarily in the development of ``main.py``.
 - Generating generic ignore files.

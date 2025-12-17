@@ -49,6 +49,22 @@ autodoc_mock_imports = ["tensorflow", "tensorflow.keras", "keras"]
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
+# Reduce noisy type-linking warnings for common external types
+nitpick_ignore = [
+    ("py:class", "numpy.ndarray"),
+    ("py:class", "np.ndarray"),
+    ("py:class", "tensorflow.keras.Model"),
+    ("py:class", "logging.Logger"),
+    ("py:data", "typing.Tuple"),
+    ("py:class", "NeuralNetwork"),
+    ("py:class", "Dictionary with normalised splits and statistics"),
+]
+
+# Ensure Matplotlib can write its cache during doc builds
+MPLCONFIGDIR = os.path.join(DOCS_DIR, "_mplcache")
+os.makedirs(MPLCONFIGDIR, exist_ok=True)
+os.environ.setdefault("MPLCONFIGDIR", MPLCONFIGDIR)
+
 # -- Options for linking to source code on GitHub ----------------------------
 # Update with your repository info
 html_context = {

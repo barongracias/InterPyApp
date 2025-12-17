@@ -3,7 +3,7 @@
 `interpy_bg` is a feedforward neural network library designed for 5D → 1D interpolation.  
 It provides modular classes for defining, training, and testing neural networks, with built-in normalization, RMSE tracking, and plotting utilities.
 
-- Docs: https://interpyapp.readthedocs.io/en/latest/index.html#
+- Docs: https://interpyapp.readthedocs.io/en/latest/index.html (package reference lives on RTD)
 - Source: https://github.com/barongracias/InterPyApp
 
 ## Features
@@ -19,33 +19,17 @@ It provides modular classes for defining, training, and testing neural networks,
 
 ## Installation
 
-Local/dev (installs interpy_bg + interpy_synth + fivedreg_tf from PyPI):
-
-```bash
-cd backend
-pip install -r requirements.lock
-```
-
 PyPI:
 
 ```bash
 pip install interpy_bg         # NumPy backend (pulls interpy-synth)
-pip install fivedreg_tf        # TF backend (pulls interpy-synth + tensorflow)
 ```
 
-Docker:
+From source (editable):
 
 ```bash
-cd ..
-./scripts/docker_build.sh
-./scripts/docker_up.sh   # backend on :8000
-# ./scripts/docker_down.sh to stop
+pip install -e .
 ```
-
-Environment:
-- Configure CORS via `ALLOWED_ORIGINS` (comma-separated), e.g. copy `backend/.env.example`.
-- CPU-only: no GPU required; TensorFlow uses the CPU build.
-- For reproducibility, prefer `requirements.lock`.
 
 ## Quick Start
 
@@ -151,24 +135,15 @@ path = synthetic_5d_pickle("outputs_numpy/synth.pkl", n=1000, seed=42)
 - `epsilon`: Small constant for numerical stability in Adam; keep default unless debugging NaNs.
 - `seed`: Set for deterministic initialisation/shuffling; leave unset for nondeterministic runs.
 
-## Tests
-
-- All backend tests live in `backend/tests/` (API, NumPy, TensorFlow, synthetic, performance).
-- Run with `python -m pytest backend/tests`.
-
 ## Notes
 
-- NumPy training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture, Lambda, activation/init, batch/clip/seed, best metrics incl. R²) into `backend/outputs_numpy/` (when running via the API).
-- TensorFlow training (set `model_type=tf` on `/train`) writes `model_tf.keras`, `normalisation_values_tf.npz`, plots, and `tf_model_metadata.json` into `backend/outputs_tf/` (served alongside NumPy artifacts).
-- Prediction (`/predict` or `Tester.predict`) uses the trained architecture/config in metadata; client-supplied hidden sizes or Lambda are ignored. `/predict` also accepts `model_type` to choose NumPy vs TF.
-- API endpoints include `/health`, `/upload` (accepts .pkl dict with X/y and returns dataset stats; uploads are content-type checked and stored with UUID-prefixed filenames), `/train`, `/jobs/{id}`, `/predict`, `/plots/{filename}`, `/artifacts/{filename}`, and `/evaluate` (returns RMSE on a supplied X/y pickle; prefers NumPy artifacts, falls back to TF if present). When `REDIS_URL` is set, `/train` pings Redis and enqueues an RQ job (`/jobs/{id}` reports status/results); if Redis is unavailable or enqueue fails, training logs a warning and runs synchronously.
-- `/reset` clears uploads plus both output folders (`backend/outputs_numpy/` and `backend/outputs_tf/`).
-- Plotting uses the headless `Agg` backend in both packages for compatibility with servers/CI.
+- NumPy training writes `model_weights.npz`, `normalisation_values.npz`, plots, and `model_metadata.json` (architecture, Lambda, activation/init, batch/clip/seed, best metrics incl. R²) into the directory you pass to `Trainer`.
+- Prediction (`Tester.predict`) uses the trained architecture/config in metadata; client-supplied hidden sizes or Lambda are ignored.
+- Plotting uses the headless `Agg` backend for compatibility with servers/CI.
 
 ## Documentation
 
-Full API documentation is hosted on [ReadTheDocs](https://interpyapp.readthedocs.io).
-See details for every class, method and plotting utility.
+Full package API documentation is hosted on [ReadTheDocs](https://interpyapp.readthedocs.io). Use RTD for full reference and examples.
 
 ## License
 

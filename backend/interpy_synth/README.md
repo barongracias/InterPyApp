@@ -4,9 +4,9 @@ Lightweight synthetic data generator for 5D → 1D regression workloads.
 Provides helper functions to create NumPy arrays or persist pickles with metadata.
 Used by both the NumPy (`interpy_bg`) and TensorFlow (`fivedreg_tf`) packages, but can be installed standalone.
 
-- Docs: https://interpyapp.readthedocs.io/en/latest/index.html#
+- Docs: https://interpyapp.readthedocs.io/en/latest/index.html
 - Source: https://github.com/barongracias/InterPyApp
-- Version: 0.1.3 (synthetic helpers shared by both backends)
+- Version: 0.1.4 (synthetic helpers shared by both backends)
 
 ## Installation
 

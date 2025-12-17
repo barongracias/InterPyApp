@@ -33,17 +33,6 @@ export type TrainResponse = {
   duration_ms?: number;
 };
 
-export type TrainJobResponse = {
-  job_id: string;
-  status: "queued" | "started" | "finished" | "failed";
-  backend?: "numpy" | "tf";
-};
-
-export type JobStatusResponse = TrainJobResponse & {
-  result?: TrainResponse;
-  error?: string;
-};
-
 export type PredictResponse = { y_pred: number[][]; model_type?: "numpy" | "tf" };
 
 class ApiError extends Error {
@@ -77,17 +66,12 @@ export async function uploadDataset(baseUrl: string, file: File): Promise<Upload
   return handle<UploadResponse>(res);
 }
 
-export async function trainModel(baseUrl: string, formData: FormData): Promise<TrainResponse | TrainJobResponse> {
+export async function trainModel(baseUrl: string, formData: FormData): Promise<TrainResponse> {
   const res = await fetch(`${baseUrl}/train`, {
     method: "POST",
     body: formData,
   });
-  return handle<TrainResponse | TrainJobResponse>(res);
-}
-
-export async function getJobStatus(baseUrl: string, jobId: string): Promise<JobStatusResponse> {
-  const res = await fetch(`${baseUrl}/jobs/${jobId}`, { cache: "no-store" });
-  return handle<JobStatusResponse>(res);
+  return handle<TrainResponse>(res);
 }
 
 export async function predictModel(baseUrl: string, formData: FormData): Promise<PredictResponse> {

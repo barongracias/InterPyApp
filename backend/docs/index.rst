@@ -9,7 +9,6 @@ Quick links
 - :doc:`getting_started` — installs, API/Docker quickstart, package snippets
 - :doc:`configuration` — hyperparameters, logging/outputs, ops notes, AI/LLM usage
 - :doc:`performance` — benchmark tables and scaling notes
-- :doc:`architecture` — high-level backend structure
 - Package references: :doc:`interpy_bg`, :doc:`fivedreg_tf`, :doc:`interpy_synth`, :doc:`modules`
 
 .. toctree::
@@ -18,8 +17,4 @@ Quick links
    getting_started
    configuration
    performance
-   architecture
-   interpy_bg
-   fivedreg_tf
-   interpy_synth
    modules

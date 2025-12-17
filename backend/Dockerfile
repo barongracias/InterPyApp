@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 COPY . /app
 
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.lock
 
 # Expose API port
 EXPOSE 8000

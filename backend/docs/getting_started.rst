@@ -13,6 +13,12 @@ The three backend packages have been uploaded to PyPI, you can find the links he
 - fivedreg_tf: https://pypi.org/project/fivedreg-tf/
 
 
+Quick start (at a glance)
+-------------------------
+- Backend + frontend locally: ``./scripts/run_local.sh`` (creates venv, installs backend/frontend deps, runs uvicorn + Next.js)
+- Backend only: ``cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.lock && uvicorn main:app --reload``
+- Docker: ``./scripts/docker_build.sh && ./scripts/docker_up.sh`` (backend on :8000, frontend on :3000)
+
 Installation (from GitHub repo)
 -------------------------------
 
@@ -53,8 +59,18 @@ Usage at a glance
 -----------------
 - Install backend deps: ``pip install -r requirements.lock`` (includes TensorFlow CPU build; Python 3.11+ required); then install packages editable if developing.
 - Run API: ``uvicorn main:app --reload`` from ``backend/``.
-- Train: POST to ``/upload`` then ``/train`` (choose ``model_type=numpy``/``tf``); predict via ``/predict``. When ``REDIS_URL`` is set, ``/train`` pings Redis and enqueues a job (status via ``/jobs/{id}``); if Redis is unavailable or enqueue fails, it logs a warning and runs synchronously.
+- Train: POST to ``/upload`` then ``/train`` (choose ``model_type=numpy``/``tf``); predict via ``/predict``. Training returns metrics plus artifact names when complete.
 - Frontend: ``npm install && npm run dev`` in ``frontend/`` (or ``./scripts/run_local.sh`` to run both).
+
+API endpoints
+-------------
+- ``/health`` – service heartbeat
+- ``/upload`` – accept .pkl (with ``X``/``y``) and return stored filename plus dataset stats
+- ``/train`` – run training (``model_type=numpy``/``tf``) with hyperparameters in form fields; returns metrics and artifact names
+- ``/predict`` – predict from a .pkl file or comma-separated values (select backend via ``model_type``)
+- ``/plots/{filename}`` and ``/artifacts/{filename}`` – serve saved plots/artifacts from outputs folders
+- ``/evaluate`` – compute RMSE on supplied X/y pickle (prefers NumPy artifacts, falls back to TF)
+- ``/reset`` – clear uploads and outputs folders
 
 CI
 --

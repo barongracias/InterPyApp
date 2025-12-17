@@ -8,16 +8,13 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import List, Optional
 
-import redis
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from rq import Queue
 from starlette.concurrency import run_in_threadpool
 
 from interpy_bg.trainer import Trainer
 from interpy_bg.tester import Tester
-from tasks import run_training_job
 
 # ----------------------
 # DIRECTORIES
@@ -39,8 +36,6 @@ ALLOWED_ARTIFACTS_TF = {
 }
 ALLOWED_ARTIFACTS = ALLOWED_ARTIFACTS_NUMPY | ALLOWED_ARTIFACTS_TF
 ALLOWED_CONTENT_TYPES = {"application/octet-stream", "application/x-pickle", "application/python-pickle"}
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
-QUEUE_NAME = os.getenv("QUEUE_NAME", "train")
 
 def get_app_logger():
     """Return a module-level logger for main app utilities."""
@@ -176,17 +171,116 @@ def _ensure_dirs():
     for d in (UPLOAD_DIR, OUTPUT_NUMPY_DIR, OUTPUT_TF_DIR):
         os.makedirs(d, exist_ok=True)
 
-def _get_queue() -> Optional[Queue]:
-    if not REDIS_URL:
-        return None
-    try:
-        conn = redis.from_url(REDIS_URL)
-        # verify connectivity; if Redis is down fall back to sync
-        conn.ping()
-        return Queue(name=QUEUE_NAME, connection=conn)
-    except Exception as exc:
-        app_logger.warning(f"Redis queue unavailable: {exc}")
-        return None
+def _run_training_job(
+    *,
+    pkl_path: str,
+    hidden_sizes: List[int],
+    Lambda: float,
+    epochs: int,
+    learning_rate: float,
+    train_val_split: float,
+    beta1: float,
+    beta2: float,
+    epsilon: float,
+    early_stop_patience: Optional[int],
+    lr_decay: Optional[float],
+    activation: str,
+    weight_init: str,
+    batch_size: Optional[int],
+    grad_clip: Optional[float],
+    seed: Optional[int],
+    model_type: str,
+    output_numpy_dir: str,
+    output_tf_dir: str,
+) -> dict:
+    """
+    Execute a training job (NumPy or TensorFlow).
+    """
+    start = time.monotonic()
+    backend = model_type.lower()
+    if backend not in {"numpy", "tf"}:
+        raise ValueError("model_type must be 'numpy' or 'tf'")
+
+    if backend == "numpy":
+        trainer = Trainer(
+            directory=output_numpy_dir,
+            hidden_sizes=list(hidden_sizes),
+            Lambda=Lambda,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            train_val_split=train_val_split,
+            beta1=beta1,
+            beta2=beta2,
+            epsilon=epsilon,
+            early_stop_patience=early_stop_patience,
+            lr_decay=lr_decay,
+            activation=activation,
+            weight_init=weight_init,
+            batch_size=batch_size,
+            grad_clip=grad_clip,
+            seed=seed,
+        )
+        train_loss, val_loss = trainer.train(pkl_path)
+        result = {
+            "message": "Training completed successfully.",
+            "model_type": "numpy",
+            "train_loss_start": train_loss[0],
+            "train_loss_end": train_loss[-1],
+            "val_loss_start": val_loss[0],
+            "val_loss_end": val_loss[-1],
+            "best_val_rmse": trainer.best_val_rmse,
+            "best_train_rmse": trainer.best_train_rmse,
+            "best_epoch": trainer.best_epoch,
+            "epochs_run": len(train_loss),
+            "baseline_rmse": trainer.baseline_rmse,
+            "final_train_r2": trainer.final_train_r2,
+            "final_val_r2": trainer.final_val_r2,
+            "plots": ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"],
+            "artifacts": ["model_weights.npz", "normalisation_values.npz", "model_metadata.json"],
+        }
+    else:
+        from fivedreg_tf.trainer_tf import TrainerTF  # lazy import to keep TF optional at import time
+
+        trainer_tf = TrainerTF(
+            directory=output_tf_dir,
+            hidden_sizes=list(hidden_sizes),
+            Lambda=Lambda,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            train_val_split=train_val_split,
+            seed=seed,
+            activation=activation,
+            weight_init=weight_init,
+            beta1=beta1,
+            beta2=beta2,
+            epsilon=epsilon,
+            early_stop_patience=early_stop_patience,
+            lr_decay=lr_decay,
+            batch_size=batch_size,
+            grad_clip=grad_clip,
+        )
+
+        train_loss, val_loss = trainer_tf.train(pkl_path)
+        result = {
+            "message": "Training completed successfully.",
+            "model_type": "tf",
+            "train_loss_start": train_loss[0] if train_loss else None,
+            "train_loss_end": train_loss[-1] if train_loss else None,
+            "val_loss_start": val_loss[0] if val_loss else None,
+            "val_loss_end": val_loss[-1] if val_loss else None,
+            "best_val_rmse": trainer_tf.best_val_rmse,
+            "best_train_rmse": trainer_tf.best_train_rmse,
+            "best_epoch": trainer_tf.best_epoch,
+            "epochs_run": len(train_loss),
+            "baseline_rmse": trainer_tf.baseline_rmse,
+            "final_train_r2": trainer_tf.final_train_r2,
+            "final_val_r2": trainer_tf.final_val_r2,
+            "plots": ["rmse_vs_epochs.png", "ytrue_vs_ypred.png"],
+            "artifacts": ["model_tf.keras", "normalisation_values_tf.npz", "tf_model_metadata.json"],
+        }
+
+    duration_ms = (time.monotonic() - start) * 1000
+    return {"duration_ms": round(duration_ms, 2), **result}
 
 @app.post("/upload")
 async def upload_pickle(file: UploadFile = File(...)):
@@ -238,7 +332,6 @@ async def train_model(
 ):
     """
     Train the neural network model using provided hyperparameters and uploaded .pkl file.
-    Enqueues to Redis/RQ when available; falls back to synchronous execution otherwise.
     """
     try:
         safe_pkl = os.path.basename(pkl_filename)
@@ -292,18 +385,7 @@ async def train_model(
             "output_tf_dir": OUTPUT_TF_DIR,
         }
 
-        queue = _get_queue()
-        if queue:
-            try:
-                job = queue.enqueue(run_training_job, kwargs=job_kwargs)
-                job.meta["params"] = {k: v for k, v in job_kwargs.items() if k != "pkl_path"}
-                job.save_meta()
-                log_event("train.enqueued", backend=model_type, job_id=job.id)
-                return {"job_id": job.id, "status": "queued", "backend": model_type}
-            except Exception as exc:
-                app_logger.warning(f"Falling back to synchronous training, enqueue failed: {exc}")
-
-        result = await run_in_threadpool(run_training_job, **job_kwargs)
+        result = await run_in_threadpool(_run_training_job, **job_kwargs)
         log_event("train.completed", backend=model_type, duration_ms=result.get("duration_ms"))
         return result
 
@@ -311,32 +393,6 @@ async def train_model(
         raise
     except Exception as e:
         raise error_response(500, str(e))
-
-@app.get("/jobs/{job_id}")
-async def job_status(job_id: str):
-    """
-    Return status/result for a queued training job.
-    """
-    queue = _get_queue()
-    if not queue:
-        raise error_response(503, "Job queue unavailable (set REDIS_URL to enable).")
-    job = queue.fetch_job(job_id)
-    if not job:
-        raise error_response(404, f"Job not found: {job_id}")
-    status = job.get_status()
-    response = {
-        "job_id": job.id,
-        "status": status,
-        "backend": job.meta.get("params", {}).get("model_type"),
-        "enqueued_at": job.enqueued_at.isoformat() if job.enqueued_at else None,
-        "started_at": job.started_at.isoformat() if job.started_at else None,
-        "ended_at": job.ended_at.isoformat() if job.ended_at else None,
-    }
-    if status == "finished":
-        response["result"] = job.meta.get("result")
-    if status == "failed":
-        response["error"] = str(job.exc_info) if job.exc_info else "Job failed"
-    return response
 
 @app.post("/predict")
 async def predict(

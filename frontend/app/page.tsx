@@ -267,8 +267,6 @@ export default function Home() {
       const data = await resetBackend(backend);
       setInlineMessage({ type: "info", text: data.message || "Backend reset" });
 
-      setJobId(null);
-      setJobStatus(null);
       setStep(1);
       setFile(null);
       setFileName("");
